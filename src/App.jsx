@@ -468,17 +468,38 @@ function HotelCard({ hotel, perkCounts, onClick }) {
 }
 
 /* ─── Suggest Hotel Modal ─── */
-function SuggestHotelModal({ onClose, user, onNeedAuth, onAdded }) {
+function SuggestHotelModal({ onClose, user, onNeedAuth, onAdded, existingHotels }) {
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [location, setLocation] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [similarHotels, setSimilarHotels] = useState([]);
+
+  // Check for similar hotels as user types
+  const checkDuplicates = (searchName) => {
+    setName(searchName);
+    if (searchName.trim().length < 3) { setSimilarHotels([]); return; }
+    const words = searchName.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(w => w.length > 2);
+    if (words.length === 0) { setSimilarHotels([]); return; }
+    const matches = existingHotels.filter(h => {
+      const hotelLower = h.name.toLowerCase().replace(/[^a-z0-9\s]/g, "");
+      return words.some(word => hotelLower.includes(word));
+    }).slice(0, 5);
+    setSimilarHotels(matches);
+  };
 
   const handleSubmit = async () => {
     if (!user) { onNeedAuth(); onClose(); return; }
     if (!name.trim() || !brand || !location.trim()) return;
     setSubmitting(true);
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    // Check for exact slug match to prevent true duplicates
+    const { data: existing } = await supabase.from("hotels").select("id").eq("slug", slug);
+    if (existing && existing.length > 0) {
+      alert("This hotel already exists in the database!");
+      setSubmitting(false);
+      return;
+    }
     await supabase.from("hotels").insert({ name: name.trim(), brand, location: location.trim(), slug });
     setSubmitting(false);
     onAdded();
@@ -498,7 +519,34 @@ function SuggestHotelModal({ onClose, user, onNeedAuth, onAdded }) {
         <p style={{ fontSize: 13, color: "#888", marginBottom: 20, fontFamily: "'DM Sans', sans-serif" }}>Can't find your property? Add it to the database.</p>
         <div style={{ marginBottom: 12 }}>
           <label style={labelStyle}>Hotel Name</label>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="The Westin Kierland Resort & Spa" style={inputStyle} />
+          <input value={name} onChange={e => checkDuplicates(e.target.value)} placeholder="The Westin Kierland Resort & Spa" style={inputStyle} />
+          {similarHotels.length > 0 && (
+            <div style={{
+              marginTop: 8, background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 10, padding: 12,
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#b8860b", marginBottom: 8, fontFamily: "'DM Sans', sans-serif" }}>
+                ⚠️ Did you mean one of these existing hotels?
+              </div>
+              {similarHotels.map(h => (
+                <div key={h.id} style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  padding: "6px 0", borderBottom: "1px solid #fff3cd",
+                }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#333", fontFamily: "'DM Sans', sans-serif" }}>{h.name}</div>
+                    <div style={{ fontSize: 11, color: "#888", fontFamily: "'DM Sans', sans-serif" }}>{h.brand} · {h.location}</div>
+                  </div>
+                  <button onClick={() => { onClose(); }} style={{
+                    background: "#8B6914", color: "#fff", border: "none", borderRadius: 6,
+                    padding: "4px 10px", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontWeight: 600, whiteSpace: "nowrap",
+                  }}>View it</button>
+                </div>
+              ))}
+              <div style={{ fontSize: 11, color: "#999", marginTop: 8, fontFamily: "'DM Sans', sans-serif" }}>
+                If none of these match, continue filling out the form below.
+              </div>
+            </div>
+          )}
         </div>
         <div style={{ marginBottom: 12 }}>
           <label style={labelStyle}>Brand</label>
@@ -581,7 +629,7 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: "#f8f5f0", fontFamily: "'DM Sans', sans-serif" }}>
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} onAuth={() => supabase.auth.getUser().then(({ data }) => setUser(data?.user))} />}
-      {showSuggest && <SuggestHotelModal onClose={() => setShowSuggest(false)} user={user} onNeedAuth={() => setShowAuth(true)} onAdded={loadHotels} />}
+      {showSuggest && <SuggestHotelModal onClose={() => setShowSuggest(false)} user={user} onNeedAuth={() => setShowAuth(true)} onAdded={loadHotels} existingHotels={hotels} />}
 
       {/* Header */}
       <div style={{
@@ -634,7 +682,7 @@ export default function App() {
                 fontSize: 38, fontWeight: 800, color: "#fff", fontFamily: "'Playfair Display', serif",
                 margin: "0 0 10px", lineHeight: 1.15, maxWidth: 600,
               }}>
-                Real elite perks,{" "}<span style={{ color: "#d4a844" }}>reported by real Marriott guests</span>
+                Real elite perks,{" "}<span style={{ color: "#d4a844" }}>reported by real guests</span>
               </h1>
               <p style={{
                 fontSize: 15, color: "rgba(255,255,255,0.55)", fontFamily: "'DM Sans', sans-serif",
