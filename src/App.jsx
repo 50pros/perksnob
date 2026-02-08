@@ -634,7 +634,7 @@ export default function App() {
                 fontSize: 38, fontWeight: 800, color: "#fff", fontFamily: "'Playfair Display', serif",
                 margin: "0 0 10px", lineHeight: 1.15, maxWidth: 600,
               }}>
-                Real elite perks,{" "}<span style={{ color: "#d4a844" }}>reported by real guests</span>
+                Real elite perks,{" "}<span style={{ color: "#d4a844" }}>reported by real Marriott guests</span>
               </h1>
               <p style={{
                 fontSize: 15, color: "rgba(255,255,255,0.55)", fontFamily: "'DM Sans', sans-serif",
