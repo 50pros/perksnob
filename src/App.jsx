@@ -305,7 +305,7 @@ export default function App() {
             Real Marriott Bonvoy elite benefits reported by real guests. Know what you're getting before you book.
           </p>
           <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-            <input type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search hotels or destinations..." style={{ flex:"1 1 300px",padding:"14px 18px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Inter',sans-serif",outline:"none",boxSizing:"border-box" }}/>
+            <input type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search hotels or destinations..." style={{ flex:"1 1 300px",padding:"14px 36px 14px 18px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Inter',sans-serif",outline:"none",boxSizing:"border-box" }}/>
             <select value={brandFilter} onChange={e=>setBrandFilter(e.target.value)} style={{ padding:"14px 18px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:13,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer",minWidth:160 }}>
               <option value="" style={{color:"#000"}}>All Brands</option>
               {usedBrands.map(b=><option key={b} value={b} style={{color:"#000"}}>{b}</option>)}
