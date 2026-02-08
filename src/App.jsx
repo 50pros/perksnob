@@ -1,418 +1,177 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "./supabaseClient";
+const TIERS=[{key:"ambassador",label:"Ambassador Elite",color:"#000"},{key:"titanium",label:"Titanium Elite",color:"#555"},{key:"platinum",label:"Platinum Elite",color:"#999"}];
+const CATS=[{key:"breakfast",icon:"🍳",label:"Breakfast"},{key:"lounge",icon:"🍸",label:"Lounge Access"},{key:"drinks",icon:"☕",label:"Drinks & Coffee"},{key:"upgrade",icon:"⬆️",label:"Room Upgrades"},{key:"gift",icon:"🎁",label:"Welcome Gift"},{key:"late_checkout",icon:"🕐",label:"Late Checkout"},{key:"spa",icon:"💆",label:"Spa & Wellness"},{key:"parking",icon:"🅿️",label:"Parking"},{key:"fnb_credit",icon:"💳",label:"F&B Credit"},{key:"other",icon:"✨",label:"Other"}];
+const BRANDS=["W Hotels","The Ritz-Carlton","St. Regis","EDITION","The Luxury Collection","JW Marriott","Marriott Hotels","Westin","Sheraton","Delta Hotels","Le Méridien","Autograph Collection","Renaissance","Tribute Portfolio","Courtyard","Residence Inn","SpringHill Suites","Fairfield","Four Points","Aloft","Element","AC Hotels","Moxy"];
+const gc=k=>CATS.find(c=>c.key===k)||CATS[9],gt=k=>TIERS.find(t=>t.key===k)||TIERS[2];
+const cc=c=>c==="high"?"#1a1a1a":c==="medium"?"#666":"#aaa",cl=c=>c==="high"?"Well established":c==="medium"?"Frequently reported":"Few reports",cv=n=>n>=8?"high":n>=4?"medium":"low";
+const be=b=>b==="Snob Supreme"?"👑":b==="Elite Reporter"?"⭐":b==="Perk Scout"?"🔍":b==="Contributor"?"✍️":"🆕";
+const ta=d=>{const s=Math.floor((Date.now()-new Date(d))/1000);if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";if(s<2592000)return Math.floor(s/86400)+"d ago";return Math.floor(s/2592000)+"mo ago"};
+const fs=d=>{if(!d)return null;return new Date(d+"T00:00:00").toLocaleDateString("en-US",{year:"numeric",month:"short"})};
+const dname=u=>u?.user_metadata?.display_name||u?.email?.split("@")[0]||"Anonymous";
+const pscore=(r,c)=>Math.min(100,r*3+c*8);
+const LS={display:"block",fontSize:11,fontWeight:600,color:"#999",fontFamily:"'Inter',sans-serif",marginBottom:6,textTransform:"uppercase",letterSpacing:0.8};
+const IS={width:"100%",padding:"11px 14px",borderRadius:8,border:"1px solid #e0e0e0",fontSize:14,fontFamily:"'Inter',sans-serif",background:"#fff",color:"#000",outline:"none",boxSizing:"border-box"};
+const BT=(bg="#000",fg="#fff")=>({background:bg,color:fg,border:"none",borderRadius:8,padding:"9px 20px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"});
 
-const TIERS = [
-  { key: "ambassador", label: "Ambassador Elite", color: "#000" },
-  { key: "titanium", label: "Titanium Elite", color: "#555" },
-  { key: "platinum", label: "Platinum Elite", color: "#999" },
-];
-const PERK_CATEGORIES = [
-  { key: "breakfast", icon: "🍳", label: "Breakfast" },
-  { key: "lounge", icon: "🍸", label: "Lounge Access" },
-  { key: "drinks", icon: "☕", label: "Drinks & Coffee" },
-  { key: "upgrade", icon: "⬆️", label: "Room Upgrades" },
-  { key: "gift", icon: "🎁", label: "Welcome Gift" },
-  { key: "late_checkout", icon: "🕐", label: "Late Checkout" },
-  { key: "spa", icon: "💆", label: "Spa & Wellness" },
-  { key: "parking", icon: "🅿️", label: "Parking" },
-  { key: "fnb_credit", icon: "💳", label: "F&B Credit" },
-  { key: "other", icon: "✨", label: "Other" },
-];
-const BRANDS = ["W Hotels","The Ritz-Carlton","St. Regis","EDITION","The Luxury Collection","JW Marriott","Marriott Hotels","Westin","Sheraton","Delta Hotels","Le Méridien","Autograph Collection","Renaissance","Tribute Portfolio","Courtyard","Residence Inn","SpringHill Suites","Fairfield","Four Points","Aloft","Element","AC Hotels","Moxy"];
+function ScoreBadge({score}){const c=score>=70?"#16a34a":score>=40?"#ca8a04":"#dc2626",bg=score>=70?"#f0fdf4":score>=40?"#fefce8":"#fef2f2";return<div style={{display:"inline-flex",alignItems:"center",gap:4,background:bg,border:`1px solid ${c}20`,borderRadius:8,padding:"4px 10px"}}><span style={{fontSize:16,fontWeight:800,color:c,fontFamily:"'Inter',sans-serif"}}>{score}</span><span style={{fontSize:10,color:c,fontFamily:"'Inter',sans-serif",fontWeight:600}}>SCORE</span></div>}
 
-const getCat = (k) => PERK_CATEGORIES.find(c => c.key === k) || PERK_CATEGORIES[9];
-const getTier = (k) => TIERS.find(t => t.key === k) || TIERS[2];
-const confColor = (c) => c === "high" ? "#1a1a1a" : c === "medium" ? "#666" : "#aaa";
-const confLabel = (c) => c === "high" ? "Well established" : c === "medium" ? "Frequently reported" : "Few reports";
-const confLevel = (n) => n >= 8 ? "high" : n >= 4 ? "medium" : "low";
-const badgeEmoji = (b) => b === "Snob Supreme" ? "👑" : b === "Elite Reporter" ? "⭐" : b === "Perk Scout" ? "🔍" : b === "Contributor" ? "✍️" : "🆕";
-const timeAgo = (d) => { const s = Math.floor((Date.now() - new Date(d)) / 1000); if (s < 60) return "just now"; if (s < 3600) return Math.floor(s/60) + "m ago"; if (s < 86400) return Math.floor(s/3600) + "h ago"; if (s < 2592000) return Math.floor(s/86400) + "d ago"; return Math.floor(s/2592000) + "mo ago"; };
-const fmtStay = (d) => { if (!d) return null; return new Date(d + "T00:00:00").toLocaleDateString("en-US", { year: "numeric", month: "short" }); };
+function PerkCard({perk,user,onUp,onDown,showHotel}){const cat=gc(perk.category),conf=cv(perk.total_confirmations),stay=fs(perk.latest_stay);const[sd,ssd]=useState(false);
+return<div style={{display:"flex",gap:14,padding:"16px 0",borderBottom:"1px solid #f0f0f0"}}><div style={{width:40,height:40,borderRadius:10,background:"#f5f5f5",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0,border:"1px solid #eee"}}>{cat.icon}</div>
+<div style={{flex:1,minWidth:0}}>{showHotel&&<div style={{fontSize:11,fontWeight:700,color:"#000",fontFamily:"'Inter',sans-serif",marginBottom:4}}>{perk.hotel_name}</div>}
+<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}><span style={{fontSize:12,fontWeight:600,color:"#1a1a1a",fontFamily:"'Inter',sans-serif",textTransform:"uppercase",letterSpacing:0.8}}>{cat.label}</span>
+<span style={{fontSize:10,fontWeight:600,color:gt(perk.elite_tier).color,fontFamily:"'Inter',sans-serif",background:"#f0f0f0",padding:"2px 6px",borderRadius:4,textTransform:"uppercase"}}>{gt(perk.elite_tier).label}</span>
+{stay&&<span style={{fontSize:10,color:"#aaa",fontFamily:"'Inter',sans-serif",background:"#f8f8f8",padding:"2px 6px",borderRadius:4}}>Stay: {stay}</span>}</div>
+<div style={{fontSize:14,color:"#333",lineHeight:1.6,fontFamily:"'Inter',sans-serif"}}>{perk.summary||perk.description}</div>
+<div style={{marginTop:8,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+<span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11,fontFamily:"'Inter',sans-serif",color:cc(conf),background:conf==="high"?"#f0f0f0":"#f5f5f5",padding:"3px 10px",borderRadius:20,fontWeight:500,border:"1px solid #eee"}}><span style={{width:5,height:5,borderRadius:"50%",background:cc(conf)}}/>{perk.total_confirmations} report{perk.total_confirmations!==1?"s":""} · {cl(conf)}</span>
+{user&&<><button onClick={()=>onUp(perk)} style={{background:"none",border:"1px solid #ddd",borderRadius:6,padding:"3px 10px",fontSize:11,cursor:"pointer",color:"#666",fontFamily:"'Inter',sans-serif"}}>👍 Confirm</button>
+<button onClick={()=>ssd(!sd)} style={{background:"none",border:"1px solid #ddd",borderRadius:6,padding:"3px 10px",fontSize:11,cursor:"pointer",color:"#999",fontFamily:"'Inter',sans-serif"}}>👎</button></>}</div>
+{sd&&user&&<div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>{[{k:"outdated",l:"Outdated"},{k:"inaccurate",l:"Inaccurate"},{k:"not_my_experience",l:"Not my experience"}].map(r=><button key={r.k} onClick={()=>{onDown(perk,r.k);ssd(false)}} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"4px 10px",fontSize:11,cursor:"pointer",color:"#dc2626",fontFamily:"'Inter',sans-serif",fontWeight:500}}>{r.l}</button>)}</div>}
+</div></div>}
 
-const LS = { display: "block", fontSize: 11, fontWeight: 600, color: "#999", fontFamily: "'Inter',sans-serif", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.8 };
-const IS = { width: "100%", padding: "11px 14px", borderRadius: 8, border: "1px solid #e0e0e0", fontSize: 14, fontFamily: "'Inter',sans-serif", background: "#fff", color: "#000", outline: "none", boxSizing: "border-box" };
+function TierSection({tier,perks,user,onUp,onDown}){const t=gt(tier);if(!perks?.length)return<div style={{padding:24,borderRadius:12,background:"#fafafa",border:"1px solid #eee",marginBottom:16}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><span style={{width:8,height:8,borderRadius:"50%",background:t.color}}/><span style={{fontSize:13,fontWeight:700,color:t.color,fontFamily:"'Inter',sans-serif"}}>{t.label}</span></div><div style={{fontSize:13,color:"#aaa",fontFamily:"'Inter',sans-serif"}}>No perks reported yet.</div></div>;
+return<div style={{padding:"20px 24px",borderRadius:12,background:"#fff",border:"1px solid #e8e8e8",marginBottom:16}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}><span style={{width:8,height:8,borderRadius:"50%",background:t.color}}/><span style={{fontSize:14,fontWeight:700,color:t.color,fontFamily:"'Inter',sans-serif"}}>{t.label}</span><span style={{fontSize:11,color:"#bbb",fontFamily:"'Inter',sans-serif",marginLeft:"auto"}}>{perks.length} perk{perks.length!==1?"s":""}</span></div>{perks.map((p,i)=><PerkCard key={p.id||i} perk={p} user={user} onUp={onUp} onDown={onDown}/>)}</div>}
 
-function Badge({ confidence, reports }) {
-  return <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontFamily: "'Inter',sans-serif", color: confColor(confidence), background: confidence === "high" ? "#f0f0f0" : "#f5f5f5", padding: "3px 10px", borderRadius: 20, fontWeight: 500, border: "1px solid #eee" }}>
-    <span style={{ width: 5, height: 5, borderRadius: "50%", background: confColor(confidence) }}/>{reports} report{reports!==1?"s":""} · {confLabel(confidence)}
-  </span>;
-}
+function AuthModal({onClose,onAuth}){const[su,ss]=useState(false),[em,se]=useState(""),[pw,sp]=useState(""),[nm,sn]=useState(""),[ld,sl]=useState(false),[er,sr]=useState("");
+const go=async()=>{sl(true);sr("");try{if(su){const{error}=await supabase.auth.signUp({email:em,password:pw,options:{data:{display_name:nm||em.split("@")[0]}}});if(error)throw error}else{const{error}=await supabase.auth.signInWithPassword({email:em,password:pw});if(error)throw error}onAuth();onClose()}catch(e){sr(e.message)}sl(false)};
+return<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(4px)"}} onClick={onClose}><div style={{background:"#fff",borderRadius:16,padding:36,maxWidth:380,width:"100%",boxShadow:"0 24px 48px rgba(0,0,0,0.12)"}} onClick={e=>e.stopPropagation()}>
+<h2 style={{fontSize:24,fontFamily:"'Inter',sans-serif",fontWeight:800,marginBottom:4}}>{su?"Create Account":"Welcome back"}</h2>
+<p style={{fontSize:13,color:"#888",marginBottom:24,fontFamily:"'Inter',sans-serif"}}>{su?"Join the community":"Sign in to contribute"}</p>
+{er&&<div style={{background:"#fff0f0",color:"#c00",padding:"10px 14px",borderRadius:8,fontSize:12,marginBottom:14,fontFamily:"'Inter',sans-serif"}}>{er}</div>}
+{su&&<div style={{marginBottom:14}}><label style={LS}>Display Name</label><input value={nm} onChange={e=>sn(e.target.value)} placeholder="TravelPro" style={IS}/></div>}
+<div style={{marginBottom:14}}><label style={LS}>Email</label><input type="email" value={em} onChange={e=>se(e.target.value)} placeholder="you@email.com" style={IS}/></div>
+<div style={{marginBottom:24}}><label style={LS}>Password</label><input type="password" value={pw} onChange={e=>sp(e.target.value)} placeholder="••••••••" style={IS}/></div>
+<button onClick={go} disabled={ld} style={{width:"100%",...BT(),opacity:ld?0.5:1}}>{ld?"...":su?"Create Account":"Sign In"}</button>
+<div style={{textAlign:"center",marginTop:16}}><button onClick={()=>ss(!su)} style={{background:"none",border:"none",color:"#000",fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600,textDecoration:"underline",textUnderlineOffset:3}}>{su?"Already have an account?":"Need an account?"}</button></div>
+</div></div>}
 
-function PerkCard({ perk, user, onUpvote }) {
-  const cat = getCat(perk.category), conf = confLevel(perk.total_confirmations);
-  const stayLabel = fmtStay(perk.latest_stay);
-  return <div style={{ display: "flex", gap: 14, padding: "16px 0", borderBottom: "1px solid #f0f0f0" }}>
-    <div style={{ width: 40, height: 40, borderRadius: 10, background: "#f5f5f5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0, border: "1px solid #eee" }}>{cat.icon}</div>
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter',sans-serif", textTransform: "uppercase", letterSpacing: 0.8 }}>{cat.label}</span>
-        {stayLabel && <span style={{ fontSize: 10, color: "#aaa", fontFamily: "'Inter',sans-serif", background: "#f8f8f8", padding: "2px 6px", borderRadius: 4 }}>Latest stay: {stayLabel}</span>}
-      </div>
-      <div style={{ fontSize: 14, color: "#333", lineHeight: 1.6, fontFamily: "'Inter',sans-serif" }}>{perk.summary}</div>
-      <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <Badge confidence={conf} reports={perk.total_confirmations}/>
-        {user && <button onClick={() => onUpvote(perk.id)} style={{ background: "none", border: "1px solid #ddd", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer", color: "#666", fontFamily: "'Inter',sans-serif" }}>✓ Confirm</button>}
-      </div>
-    </div>
-  </div>;
-}
+function MapView({hotels,perkCounts,onSelect}){const mr=useRef(null),mi=useRef(null),ms=useRef([]);
+useEffect(()=>{if(!window.google||!mr.current||mi.current)return;mi.current=new window.google.maps.Map(mr.current,{center:{lat:30,lng:-40},zoom:2,styles:[{elementType:"geometry",stylers:[{color:"#f5f5f5"}]},{featureType:"water",elementType:"geometry",stylers:[{color:"#e9e9e9"}]}],disableDefaultUI:true,zoomControl:true})},[]);
+useEffect(()=>{if(!mi.current||!window.google)return;ms.current.forEach(m=>m.setMap(null));ms.current=[];const b=new window.google.maps.LatLngBounds();let hp=false;
+hotels.forEach(h=>{if(!h.latitude||!h.longitude)return;hp=true;const p={lat:h.latitude,lng:h.longitude};b.extend(p);const c=perkCounts[h.id]||0;
+const m=new window.google.maps.Marker({position:p,map:mi.current,title:h.name,icon:{path:window.google.maps.SymbolPath.CIRCLE,fillColor:c>0?"#000":"#ccc",fillOpacity:1,strokeColor:"#fff",strokeWeight:2,scale:Math.max(6,Math.min(14,6+c))}});
+const iw=new window.google.maps.InfoWindow({content:`<div style="font-family:Inter,sans-serif;padding:4px"><strong>${h.name}</strong><br><span style="color:#888;font-size:12px">${h.brand} · ${h.location}</span><br><span style="font-weight:700">${c} reports</span></div>`});
+m.addListener("click",()=>iw.open(mi.current,m));m.addListener("dblclick",()=>onSelect(h));ms.current.push(m)});if(hp)mi.current.fitBounds(b,50)},[hotels,perkCounts,onSelect]);
+return<div><div style={{fontSize:11,color:"#999",fontFamily:"'Inter',sans-serif",marginBottom:8}}>Click marker for info · Double-click to open hotel</div><div ref={mr} style={{width:"100%",height:500,borderRadius:12,border:"1px solid #e8e8e8",background:"#f5f5f5"}}/></div>}
 
-function TierSection({ tier, perks, user, onUpvote }) {
-  const t = getTier(tier);
-  if (!perks || !perks.length) return <div style={{ padding: 24, borderRadius: 12, background: "#fafafa", border: "1px solid #eee", marginBottom: 16 }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-      <span style={{ width: 8, height: 8, borderRadius: "50%", background: t.color }}/><span style={{ fontSize: 13, fontWeight: 700, color: t.color, fontFamily: "'Inter',sans-serif" }}>{t.label}</span>
-    </div>
-    <div style={{ fontSize: 13, color: "#aaa", fontFamily: "'Inter',sans-serif" }}>No perks reported yet. Be the first!</div>
-  </div>;
-  return <div style={{ padding: "20px 24px", borderRadius: 12, background: "#fff", border: "1px solid #e8e8e8", marginBottom: 16 }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-      <span style={{ width: 8, height: 8, borderRadius: "50%", background: t.color }}/><span style={{ fontSize: 14, fontWeight: 700, color: t.color, fontFamily: "'Inter',sans-serif" }}>{t.label}</span>
-      <span style={{ fontSize: 11, color: "#bbb", fontFamily: "'Inter',sans-serif", marginLeft: "auto" }}>{perks.length} perk{perks.length!==1?"s":""}</span>
-    </div>
-    {perks.map((p,i) => <PerkCard key={p.id||i} perk={p} user={user} onUpvote={onUpvote}/>)}
-  </div>;
-}
+function PerkSearch({user,onNeedAuth}){const[tier,st]=useState(""),[cat,sc]=useState(""),[res,sr]=useState([]),[ld,sl]=useState(false),[done,sd]=useState(false);
+const go=async()=>{sl(true);sd(true);let q=supabase.from("perk_reports").select("*, hotels!inner(name,brand,location)").order("created_at",{ascending:false}).limit(50);if(tier)q=q.eq("elite_tier",tier);if(cat)q=q.eq("category",cat);const{data}=await q;
+const pm={};(data||[]).forEach(p=>{const k=`${p.hotel_id}|${p.elite_tier}|${p.category}|${p.description}`;if(!pm[k])pm[k]={...p,total_confirmations:1,summary:p.description,hotel_name:p.hotels?.name,latest_stay:p.stay_date};else{pm[k].total_confirmations+=1;if(p.stay_date>pm[k].latest_stay)pm[k].latest_stay=p.stay_date}});sr(Object.values(pm));sl(false)};
+return<div><div style={{background:"#fff",borderRadius:12,padding:24,border:"1px solid #e8e8e8",marginBottom:20}}>
+<div style={{fontSize:16,fontWeight:800,color:"#000",fontFamily:"'Inter',sans-serif",marginBottom:16}}>Find Perks Across All Hotels</div>
+<div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end"}}>
+<div style={{flex:"1 1 180px"}}><label style={LS}>Tier</label><select value={tier} onChange={e=>st(e.target.value)} style={IS}><option value="">Any</option>{TIERS.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}</select></div>
+<div style={{flex:"1 1 180px"}}><label style={LS}>Category</label><select value={cat} onChange={e=>sc(e.target.value)} style={IS}><option value="">Any</option>{CATS.map(c=><option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}</select></div>
+<button onClick={go} style={BT()}>Search</button></div></div>
+{ld?<div style={{textAlign:"center",padding:40,color:"#ccc"}}>Searching...</div>:done&&<><div style={{fontSize:12,color:"#999",fontFamily:"'Inter',sans-serif",marginBottom:12}}>{res.length} result{res.length!==1?"s":""}</div>{res.map((p,i)=><PerkCard key={i} perk={p} user={user} onUp={()=>{}} onDown={()=>{}} showHotel/>)}{!res.length&&<div style={{textAlign:"center",padding:40,color:"#ccc"}}>No perks found.</div>}</>}</div>}
 
-function Cmt({ comment }) {
-  const t = getTier(comment.elite_tier);
-  const date = new Date(comment.created_at).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"});
-  return <div style={{ padding: "16px 0", borderBottom: "1px solid #f0f0f0" }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-      <div style={{ width: 28, height: 28, borderRadius: "50%", background: t.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 600, fontFamily: "'Inter',sans-serif" }}>{comment.display_name.charAt(0).toUpperCase()}</div>
-      <span style={{ fontSize: 13, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter',sans-serif" }}>{comment.display_name}</span>
-      <span style={{ fontSize: 10, color: t.color, fontWeight: 600, fontFamily: "'Inter',sans-serif", background: "#f0f0f0", padding: "2px 8px", borderRadius: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>{t.label}</span>
-      <span style={{ fontSize: 11, color: "#ccc", fontFamily: "'Inter',sans-serif", marginLeft: "auto" }}>{date}</span>
-    </div>
-    <div style={{ fontSize: 14, color: "#444", lineHeight: 1.6, fontFamily: "'Inter',sans-serif", paddingLeft: 36 }}>{comment.text}</div>
-  </div>;
-}
+function Comparison({hotels,onClose}){const[sel,ss]=useState(["",""]),[data,sd]=useState({}),[ld,sl]=useState(false);
+const load=async(i,id)=>{const ns=[...sel];ns[i]=id;ss(ns);if(!id||data[id])return;sl(true);const{data:pd}=await supabase.from("perk_reports").select("*").eq("hotel_id",id);const pm={};(pd||[]).forEach(p=>{const k=`${p.elite_tier}|${p.category}|${p.description}`;if(!pm[k])pm[k]={...p,total_confirmations:1,summary:p.description};else pm[k].total_confirmations+=1});sd(d=>({...d,[id]:Object.values(pm)}));sl(false)};
+return<div><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#000",fontWeight:600,fontFamily:"'Inter',sans-serif",padding:0,marginBottom:24,textDecoration:"underline",textUnderlineOffset:3}}>← Back</button>
+<div style={{background:"#000",borderRadius:16,padding:32,marginBottom:28,color:"#fff"}}><div style={{fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:"'Inter',sans-serif"}}>Compare</div><h1 style={{fontSize:28,fontWeight:900,margin:0,fontFamily:"'Inter',sans-serif"}}>Side-by-Side Perks</h1></div>
+<div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>{sel.map((s,i)=><div key={i} style={{flex:"1 1 200px"}}><label style={LS}>Hotel {i+1}</label><select value={s} onChange={e=>load(i,e.target.value)} style={IS}><option value="">Select...</option>{hotels.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></div>)}
+{sel.length<4&&<button onClick={()=>ss([...sel,""])} style={{alignSelf:"flex-end",...BT("#f0f0f0","#000"),border:"1px dashed #ccc",fontSize:12}}>+ Add</button>}</div>
+{ld&&<div style={{textAlign:"center",padding:20,color:"#ccc"}}>Loading...</div>}
+{TIERS.map(tier=>{const active=sel.filter(s=>s);if(!active.length)return null;return<div key={tier.key} style={{marginBottom:20}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}><span style={{width:8,height:8,borderRadius:"50%",background:tier.color}}/><span style={{fontSize:14,fontWeight:700,color:tier.color,fontFamily:"'Inter',sans-serif"}}>{tier.label}</span></div>
+<div style={{display:"grid",gridTemplateColumns:`repeat(${active.length},1fr)`,gap:12}}>{active.map(hid=>{const h=hotels.find(x=>x.id===hid);const perks=(data[hid]||[]).filter(p=>p.elite_tier===tier.key);return<div key={hid} style={{background:"#fff",borderRadius:10,padding:16,border:"1px solid #e8e8e8",minWidth:0}}>
+<div style={{fontSize:12,fontWeight:700,color:"#000",fontFamily:"'Inter',sans-serif",marginBottom:8,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{h?.name||"Select a hotel"}</div>
+{perks.length?perks.map((p,i)=><div key={i} style={{display:"flex",gap:6,padding:"6px 0",borderBottom:"1px solid #f5f5f5",fontSize:13,fontFamily:"'Inter',sans-serif",color:"#333"}}><span>{gc(p.category).icon}</span><span>{p.summary}</span></div>):<div style={{color:"#ccc",fontSize:12}}>No perks</div>}</div>})}</div></div>})}</div>}
 
-/* ─── Leaderboard ─── */
-function Leaderboard({ onClose }) {
-  const [leaders, setLeaders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from("leaderboard").select("*").limit(25);
-      setLeaders(data || []);
-      setLoading(false);
-    })();
-  }, []);
+function UserProfile({userId,onClose}){const[p,sp]=useState(null),[r,sr]=useState([]),[ld,sl]=useState(true);
+useEffect(()=>{(async()=>{const{data:pd}=await supabase.from("user_profiles").select("*").eq("user_id",userId).single();sp(pd);const{data:rd}=await supabase.from("perk_reports").select("*,hotels(name,brand)").eq("user_id",userId).order("created_at",{ascending:false}).limit(20);sr(rd||[]);sl(false)})()},[userId]);
+if(ld)return<div style={{textAlign:"center",padding:60,color:"#ccc"}}>Loading...</div>;if(!p)return<div style={{textAlign:"center",padding:60,color:"#ccc"}}>Profile not found.</div>;
+return<div><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#000",fontWeight:600,fontFamily:"'Inter',sans-serif",padding:0,marginBottom:24,textDecoration:"underline",textUnderlineOffset:3}}>← Back</button>
+<div style={{background:"#000",borderRadius:16,padding:32,marginBottom:28,color:"#fff",display:"flex",alignItems:"center",gap:20,flexWrap:"wrap"}}>
+<div style={{width:64,height:64,borderRadius:"50%",background:"#333",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,fontWeight:800}}>{p.display_name?.charAt(0).toUpperCase()}</div>
+<div><h1 style={{fontSize:24,fontWeight:800,margin:"0 0 4px",fontFamily:"'Inter',sans-serif"}}>{p.display_name}</h1><div style={{fontSize:13,color:"rgba(255,255,255,0.5)"}}>{be(p.badge)} {p.badge} · Since {new Date(p.member_since).toLocaleDateString("en-US",{year:"numeric",month:"short"})}</div></div></div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:12,marginBottom:24}}>{[{n:p.total_reports,l:"Reports"},{n:p.hotels_covered,l:"Hotels"},{n:p.categories_reported,l:"Categories"}].map(x=><div key={x.l} style={{background:"#fff",borderRadius:10,padding:16,border:"1px solid #e8e8e8",textAlign:"center"}}><div style={{fontSize:28,fontWeight:800,color:"#000",fontFamily:"'Inter',sans-serif"}}>{x.n}</div><div style={{fontSize:11,color:"#999",textTransform:"uppercase",letterSpacing:0.5}}>{x.l}</div></div>)}</div>
+<div style={{fontSize:14,fontWeight:700,color:"#000",fontFamily:"'Inter',sans-serif",marginBottom:12}}>Recent Reports</div>
+{r.map((x,i)=><div key={i} style={{display:"flex",gap:10,padding:"12px 0",borderBottom:"1px solid #f0f0f0"}}><span style={{fontSize:16}}>{gc(x.category).icon}</span><div style={{flex:1}}><div style={{fontSize:12,fontWeight:700,color:"#000"}}>{x.hotels?.name}</div><div style={{fontSize:13,color:"#444"}}>{x.description}</div><div style={{fontSize:11,color:"#bbb",marginTop:4}}>{gt(x.elite_tier).label} · {ta(x.created_at)}</div></div></div>)}</div>}
 
-  return <div>
-    <button onClick={onClose} style={{ background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#000",fontWeight:600,fontFamily:"'Inter',sans-serif",padding:0,marginBottom:24,textDecoration:"underline",textUnderlineOffset:3 }}>← Back</button>
-    <div style={{ background:"#000",borderRadius:16,padding:"36px 32px",marginBottom:28,color:"#fff" }}>
-      <div style={{ fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.4)",fontFamily:"'Inter',sans-serif",textTransform:"uppercase",letterSpacing:2,marginBottom:10 }}>Community</div>
-      <h1 style={{ fontSize:32,fontWeight:900,margin:0,fontFamily:"'Inter',sans-serif",letterSpacing:-1 }}>Leaderboard</h1>
-      <p style={{ fontSize:14,color:"rgba(255,255,255,0.4)",fontFamily:"'Inter',sans-serif",marginTop:8 }}>Top contributors making hotel intel better for everyone.</p>
-    </div>
+function Leaderboard({onClose,onProfile}){const[ls,sl]=useState([]),[ld,sld]=useState(true);useEffect(()=>{(async()=>{const{data}=await supabase.from("leaderboard").select("*").limit(25);sl(data||[]);sld(false)})()},[]);
+return<div><button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#000",fontWeight:600,fontFamily:"'Inter',sans-serif",padding:0,marginBottom:24,textDecoration:"underline",textUnderlineOffset:3}}>← Back</button>
+<div style={{background:"#000",borderRadius:16,padding:32,marginBottom:28,color:"#fff"}}><div style={{fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:"'Inter',sans-serif"}}>Community</div><h1 style={{fontSize:32,fontWeight:900,margin:0,fontFamily:"'Inter',sans-serif"}}>Leaderboard</h1><p style={{fontSize:14,color:"rgba(255,255,255,0.4)",marginTop:8}}>Top contributors making hotel intel better.</p></div>
+<div style={{display:"flex",gap:10,marginBottom:24,flexWrap:"wrap"}}>{[{b:"Snob Supreme",n:"50+"},{b:"Elite Reporter",n:"25+"},{b:"Perk Scout",n:"10+"},{b:"Contributor",n:"5+"},{b:"Newcomer",n:"< 5"}].map(x=><div key={x.b} style={{background:"#fff",border:"1px solid #eee",borderRadius:8,padding:"6px 12px",display:"flex",alignItems:"center",gap:6}}><span>{be(x.b)}</span><div><div style={{fontSize:11,fontWeight:700,color:"#000"}}>{x.b}</div><div style={{fontSize:10,color:"#aaa"}}>{x.n}</div></div></div>)}</div>
+{ld?<div style={{textAlign:"center",padding:40,color:"#ccc"}}>Loading...</div>:<div style={{background:"#fff",borderRadius:12,border:"1px solid #e8e8e8",overflow:"hidden"}}>
+<div style={{display:"grid",gridTemplateColumns:"50px 1fr 70px 70px 80px",padding:"12px 20px",background:"#fafafa",borderBottom:"1px solid #eee",fontSize:10,fontWeight:700,color:"#999",textTransform:"uppercase",letterSpacing:1}}><span>#</span><span>Contributor</span><span style={{textAlign:"center"}}>Reports</span><span style={{textAlign:"center"}}>Hotels</span><span style={{textAlign:"right"}}>Active</span></div>
+{ls.map((l,i)=><div key={l.user_id||i} onClick={()=>l.user_id&&onProfile(l.user_id)} style={{display:"grid",gridTemplateColumns:"50px 1fr 70px 70px 80px",padding:"12px 20px",borderBottom:"1px solid #f5f5f5",alignItems:"center",cursor:l.user_id?"pointer":"default"}}>
+<span style={{fontSize:16,fontWeight:800,color:i<3?"#000":"#ccc"}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</span>
+<div style={{display:"flex",alignItems:"center",gap:10}}><div style={{width:30,height:30,borderRadius:"50%",background:i<3?"#000":"#e0e0e0",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700}}>{l.display_name?.charAt(0).toUpperCase()||"?"}</div><div><div style={{fontSize:13,fontWeight:600,color:"#000"}}>{l.display_name}</div><div style={{fontSize:10,color:"#aaa"}}>{be(l.badge)} {l.badge}</div></div></div>
+<div style={{textAlign:"center",fontSize:16,fontWeight:800,color:"#000"}}>{l.total_reports}</div><div style={{textAlign:"center",fontSize:13,color:"#666"}}>{l.hotels_covered}</div><div style={{textAlign:"right",fontSize:11,color:"#bbb"}}>{ta(l.last_active)}</div></div>)}
+{!ls.length&&<div style={{padding:40,textAlign:"center",color:"#ccc"}}>No contributions yet.</div>}</div>}</div>}
 
-    {/* Badge legend */}
-    <div style={{ display:"flex",gap:12,marginBottom:24,flexWrap:"wrap" }}>
-      {[{b:"Snob Supreme",n:"50+ reports"},{b:"Elite Reporter",n:"25+"},{b:"Perk Scout",n:"10+"},{b:"Contributor",n:"5+"},{b:"Newcomer",n:"< 5"}].map(x =>
-        <div key={x.b} style={{ background:"#fff",border:"1px solid #eee",borderRadius:8,padding:"8px 14px",display:"flex",alignItems:"center",gap:6 }}>
-          <span style={{ fontSize:14 }}>{badgeEmoji(x.b)}</span>
-          <div>
-            <div style={{ fontSize:12,fontWeight:700,color:"#000",fontFamily:"'Inter',sans-serif" }}>{x.b}</div>
-            <div style={{ fontSize:10,color:"#aaa",fontFamily:"'Inter',sans-serif" }}>{x.n}</div>
-          </div>
-        </div>
-      )}
-    </div>
+function HotelDetail({hotel,user,onBack,onNeedAuth}){const[tab,stab]=useState("perks"),[sf,ssf]=useState(false),[perks,sp]=useState([]),[cmts,sc]=useState([]),[ld,sl]=useState(true);
+const[sT,ssT]=useState(""),[sC,ssC]=useState(""),[sD,ssD]=useState(""),[sDate,ssDate]=useState(""),[sub,sSub]=useState(false);const[cT,scT]=useState(""),[cX,scX]=useState("");
+const load=useCallback(async()=>{sl(true);const{data:pd}=await supabase.from("perk_reports").select("*").eq("hotel_id",hotel.id).order("created_at",{ascending:false});
+const pm={};(pd||[]).forEach(p=>{const k=`${p.elite_tier}|${p.category}|${p.description}`;if(!pm[k])pm[k]={...p,total_confirmations:1,summary:p.description,latest_stay:p.stay_date};else{pm[k].total_confirmations+=1;if(p.stay_date&&(!pm[k].latest_stay||p.stay_date>pm[k].latest_stay))pm[k].latest_stay=p.stay_date}});sp(Object.values(pm));
+const{data:cd}=await supabase.from("comments").select("*").eq("hotel_id",hotel.id).order("created_at",{ascending:false});sc(cd||[]);sl(false)},[hotel.id]);useEffect(()=>{load()},[load]);
+const subPerk=async()=>{if(!user){onNeedAuth();return}if(!sT||!sC||!sD.trim())return;sSub(true);const row={hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:sT,category:sC,description:sD.trim()};if(sDate)row.stay_date=sDate;await supabase.from("perk_reports").insert(row);ssT("");ssC("");ssD("");ssDate("");ssf(false);sSub(false);load()};
+const subCmt=async()=>{if(!user){onNeedAuth();return}if(!cT||!cX.trim())return;await supabase.from("comments").insert({hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:cT,text:cX.trim()});scT("");scX("");load()};
+const up=async p=>{if(!user){onNeedAuth();return}await supabase.from("perk_reports").insert({hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:p.elite_tier,category:p.category,description:p.description});load()};
+const down=async(p,reason)=>{if(!user){onNeedAuth();return}await supabase.from("downvotes").insert({perk_report_id:p.id,user_id:user.id,reason}).catch(()=>{});load()};
+const byTier={};TIERS.forEach(t=>{byTier[t.key]=perks.filter(p=>p.elite_tier===t.key)});const tr=perks.reduce((a,p)=>a+p.total_confirmations,0),cc2=new Set(perks.map(p=>p.category)).size,score=pscore(tr,cc2);
+return<div><button onClick={onBack} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#000",fontWeight:600,fontFamily:"'Inter',sans-serif",padding:0,marginBottom:24,textDecoration:"underline",textUnderlineOffset:3}}>← Back</button>
+<div style={{background:"#000",borderRadius:16,padding:"36px 32px",marginBottom:28,color:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+<div><div style={{fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.4)",textTransform:"uppercase",letterSpacing:2,marginBottom:10}}>{hotel.brand}</div><h1 style={{fontSize:28,fontWeight:800,margin:"0 0 6px",fontFamily:"'Inter',sans-serif",lineHeight:1.2}}>{hotel.name}</h1><div style={{fontSize:14,color:"rgba(255,255,255,0.5)"}}>{hotel.location}</div></div>
+{tr>0&&<ScoreBadge score={score}/>}</div>
+<div style={{display:"flex",gap:16,marginTop:24,flexWrap:"wrap"}}>{TIERS.map(t=><div key={t.key} style={{background:"rgba(255,255,255,0.06)",borderRadius:10,padding:"12px 18px",border:"1px solid rgba(255,255,255,0.08)"}}><div style={{fontSize:10,color:"rgba(255,255,255,0.35)",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{t.label}</div><div style={{fontSize:22,fontWeight:800,color:"#fff"}}>{byTier[t.key]?.length||0} <span style={{fontSize:11,fontWeight:400,color:"rgba(255,255,255,0.35)"}}>perks</span></div></div>)}</div></div>
+<div style={{display:"flex",gap:8,marginBottom:24,alignItems:"center",flexWrap:"wrap"}}>{[{k:"perks",l:"Perks Overview"},{k:"comments",l:`Tips (${cmts.length})`}].map(x=><button key={x.k} onClick={()=>stab(x.k)} style={{background:tab===x.k?"#000":"transparent",color:tab===x.k?"#fff":"#999",border:tab===x.k?"none":"1px solid #e0e0e0",borderRadius:8,padding:"9px 20px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>{x.l}</button>)}
+<button onClick={()=>{if(!user){onNeedAuth();return}ssf(!sf)}} style={{marginLeft:"auto",background:"#fff",color:"#000",border:"2px solid #000",borderRadius:8,padding:"8px 20px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>+ Report Perk</button></div>
+{sf&&<div style={{background:"#fafafa",borderRadius:12,padding:28,border:"1px solid #e8e8e8",marginBottom:24}}>
+<div style={{fontSize:18,fontWeight:800,color:"#000",fontFamily:"'Inter',sans-serif",marginBottom:20}}>Report a Perk</div>
+<div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:16}}><div style={{flex:"1 1 160px"}}><label style={LS}>Tier</label><select value={sT} onChange={e=>ssT(e.target.value)} style={IS}><option value="">Select...</option>{TIERS.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}</select></div>
+<div style={{flex:"1 1 160px"}}><label style={LS}>Category</label><select value={sC} onChange={e=>ssC(e.target.value)} style={IS}><option value="">Select...</option>{CATS.map(c=><option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}</select></div>
+<div style={{flex:"1 1 140px"}}><label style={LS}>When did you stay?</label><input type="month" value={sDate} onChange={e=>ssDate(e.target.value)} style={IS}/></div></div>
+<div style={{marginBottom:16}}><label style={LS}>Describe the perk</label><textarea value={sD} onChange={e=>ssD(e.target.value)} placeholder="e.g., Free lattes at the lobby café" style={{...IS,minHeight:80,resize:"vertical"}}/></div>
+<div style={{display:"flex",gap:8}}><button onClick={subPerk} disabled={sub} style={{...BT(),opacity:sub?0.5:1}}>Submit</button><button onClick={()=>ssf(false)} style={BT("#f5f5f5","#999")}>Cancel</button></div></div>}
+{ld?<div style={{textAlign:"center",padding:40,color:"#ccc"}}>Loading...</div>:tab==="perks"?<div>{TIERS.map(t=><TierSection key={t.key} tier={t.key} perks={byTier[t.key]} user={user} onUp={up} onDown={down}/>)}</div>
+:<div style={{background:"#fff",borderRadius:12,padding:"8px 24px 24px",border:"1px solid #e8e8e8"}}><div style={{fontSize:14,fontWeight:700,color:"#000",padding:"18px 0 10px",borderBottom:"1px solid #f0f0f0",marginBottom:4}}>Guest Tips</div>
+{cmts.map((c,i)=>{const t=gt(c.elite_tier),date=new Date(c.created_at).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"});return<div key={c.id||i} style={{padding:"16px 0",borderBottom:"1px solid #f0f0f0"}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,flexWrap:"wrap"}}><div style={{width:28,height:28,borderRadius:"50%",background:t.color,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:600}}>{c.display_name.charAt(0).toUpperCase()}</div><span style={{fontSize:13,fontWeight:600,color:"#1a1a1a"}}>{c.display_name}</span><span style={{fontSize:10,color:t.color,fontWeight:600,background:"#f0f0f0",padding:"2px 8px",borderRadius:4,textTransform:"uppercase"}}>{t.label}</span><span style={{fontSize:11,color:"#ccc",marginLeft:"auto"}}>{date}</span></div><div style={{fontSize:14,color:"#444",lineHeight:1.6,paddingLeft:36}}>{c.text}</div></div>})}
+{!cmts.length&&<div style={{padding:24,textAlign:"center",color:"#ccc",fontSize:13}}>No tips yet.</div>}
+<div style={{marginTop:20,padding:20,background:"#fafafa",borderRadius:10,border:"1px solid #eee"}}><div style={{fontSize:13,fontWeight:600,color:"#333",marginBottom:12}}>Share a tip</div>
+<select value={cT} onChange={e=>scT(e.target.value)} style={{...IS,maxWidth:200,marginBottom:10}}><option value="">Your tier...</option>{TIERS.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}</select>
+<textarea value={cX} onChange={e=>scX(e.target.value)} placeholder="Share a tip..." style={{...IS,minHeight:60,resize:"vertical",marginBottom:10}}/>
+<button onClick={subCmt} style={BT()}>Post Tip</button></div></div>}</div>}
 
-    {loading ? <div style={{textAlign:"center",padding:40,color:"#ccc"}}>Loading...</div> :
-    <div style={{ background:"#fff",borderRadius:12,border:"1px solid #e8e8e8",overflow:"hidden" }}>
-      {/* Header row */}
-      <div style={{ display:"grid",gridTemplateColumns:"50px 1fr 100px 100px 100px",padding:"14px 20px",background:"#fafafa",borderBottom:"1px solid #eee",fontSize:10,fontWeight:700,color:"#999",fontFamily:"'Inter',sans-serif",textTransform:"uppercase",letterSpacing:1 }}>
-        <span>#</span><span>Contributor</span><span style={{textAlign:"center"}}>Reports</span><span style={{textAlign:"center"}}>Hotels</span><span style={{textAlign:"right"}}>Last Active</span>
-      </div>
-      {leaders.map((l, i) => (
-        <div key={l.user_id||i} style={{ display:"grid",gridTemplateColumns:"50px 1fr 100px 100px 100px",padding:"16px 20px",borderBottom:"1px solid #f5f5f5",alignItems:"center",transition:"background 0.1s" }}
-          onMouseEnter={e=>e.currentTarget.style.background="#fafafa"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-          <span style={{ fontSize:16,fontWeight:800,color:i<3?"#000":"#ccc",fontFamily:"'Inter',sans-serif" }}>
-            {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
-          </span>
-          <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-            <div style={{ width:32,height:32,borderRadius:"50%",background:i<3?"#000":"#e0e0e0",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,fontFamily:"'Inter',sans-serif" }}>
-              {l.display_name?.charAt(0).toUpperCase() || "?"}
-            </div>
-            <div>
-              <div style={{ fontSize:14,fontWeight:600,color:"#000",fontFamily:"'Inter',sans-serif" }}>{l.display_name}</div>
-              <div style={{ fontSize:11,color:"#aaa",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:4 }}>
-                <span>{badgeEmoji(l.badge)}</span> {l.badge}
-              </div>
-            </div>
-          </div>
-          <div style={{ textAlign:"center",fontSize:18,fontWeight:800,color:"#000",fontFamily:"'Inter',sans-serif" }}>{l.total_reports}</div>
-          <div style={{ textAlign:"center",fontSize:14,color:"#666",fontFamily:"'Inter',sans-serif" }}>{l.hotels_covered}</div>
-          <div style={{ textAlign:"right",fontSize:12,color:"#bbb",fontFamily:"'Inter',sans-serif" }}>{timeAgo(l.last_active)}</div>
-        </div>
-      ))}
-      {!leaders.length && <div style={{ padding:40,textAlign:"center",color:"#ccc",fontFamily:"'Inter',sans-serif" }}>No contributions yet. Be the first!</div>}
-    </div>}
-  </div>;
-}
+function HotelCard({hotel,perkCounts,score,onClick}){const c=perkCounts[hotel.id]||0;return<div onClick={onClick} style={{background:"#fff",borderRadius:12,padding:24,border:"1px solid #e8e8e8",cursor:"pointer",transition:"all 0.2s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#000";e.currentTarget.style.transform="translateY(-1px)"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#e8e8e8";e.currentTarget.style.transform="translateY(0)"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}><div style={{fontSize:10,fontWeight:700,color:"#999",textTransform:"uppercase",letterSpacing:1.5,marginBottom:8}}>{hotel.brand}</div>{score>0&&<div style={{fontSize:14,fontWeight:800,color:score>=70?"#16a34a":score>=40?"#ca8a04":"#dc2626"}}>{score}</div>}</div>
+<div style={{fontSize:17,fontWeight:700,color:"#000",marginBottom:4,lineHeight:1.3}}>{hotel.name}</div><div style={{fontSize:13,color:"#aaa",marginBottom:16}}>{hotel.location}</div>
+<div style={{fontSize:12,color:"#888",display:"flex",alignItems:"center",gap:5}}><span style={{color:"#000",fontWeight:800,fontSize:16}}>{c}</span> perk reports</div></div>}
 
-/* ─── Auth Modal ─── */
-function AuthModal({ onClose, onAuth }) {
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [displayName, setDisplayName] = useState("");
-  const [loading, setLoading] = useState(false); const [error, setError] = useState("");
-  const handle = async () => {
-    setLoading(true); setError("");
-    try {
-      if (isSignUp) { const{error}=await supabase.auth.signUp({email,password,options:{data:{display_name:displayName||email.split("@")[0]}}}); if(error)throw error; }
-      else { const{error}=await supabase.auth.signInWithPassword({email,password}); if(error)throw error; }
-      onAuth(); onClose();
-    } catch(e){ setError(e.message); }
-    setLoading(false);
-  };
-  return <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(4px)" }} onClick={onClose}>
-    <div style={{ background:"#fff",borderRadius:16,padding:36,maxWidth:380,width:"100%",boxShadow:"0 24px 48px rgba(0,0,0,0.12)" }} onClick={e=>e.stopPropagation()}>
-      <h2 style={{ fontSize:24,fontFamily:"'Inter',sans-serif",fontWeight:800,marginBottom:4,letterSpacing:-0.5 }}>{isSignUp?"Create Account":"Welcome back"}</h2>
-      <p style={{ fontSize:13,color:"#888",marginBottom:24,fontFamily:"'Inter',sans-serif" }}>{isSignUp?"Join the community":"Sign in to contribute"}</p>
-      {error && <div style={{ background:"#fff0f0",color:"#c00",padding:"10px 14px",borderRadius:8,fontSize:12,marginBottom:14,fontFamily:"'Inter',sans-serif",border:"1px solid #ffe0e0" }}>{error}</div>}
-      {isSignUp && <div style={{marginBottom:14}}><label style={LS}>Display Name</label><input value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder="TravelPro" style={IS}/></div>}
-      <div style={{marginBottom:14}}><label style={LS}>Email</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com" style={IS}/></div>
-      <div style={{marginBottom:24}}><label style={LS}>Password</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" style={IS}/></div>
-      <button onClick={handle} disabled={loading} style={{ width:"100%",background:"#000",color:"#fff",border:"none",borderRadius:10,padding:"13px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",opacity:loading?0.5:1 }}>{loading?"...":isSignUp?"Create Account":"Sign In"}</button>
-      <div style={{textAlign:"center",marginTop:16}}><button onClick={()=>setIsSignUp(!isSignUp)} style={{ background:"none",border:"none",color:"#000",fontSize:13,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600,textDecoration:"underline",textUnderlineOffset:3 }}>{isSignUp?"Already have an account? Sign in":"Need an account? Sign up"}</button></div>
-    </div>
-  </div>;
-}
+function AddHotelModal({onClose,user,onNeedAuth,onAdded,existingHotels}){const[name,sn]=useState(""),[brand,sb]=useState(""),[loc,sloc]=useState(""),[sub,ss]=useState(false),[sim,ssim]=useState([]);
+const ck=v=>{sn(v);if(v.trim().length<3){ssim([]);return}const w=v.toLowerCase().replace(/[^a-z0-9\s]/g,"").split(/\s+/).filter(x=>x.length>2);if(!w.length){ssim([]);return}ssim(existingHotels.filter(h=>{const n=h.name.toLowerCase().replace(/[^a-z0-9\s]/g,"");return w.some(x=>n.includes(x))}).slice(0,5))};
+const go=async()=>{if(!user){onNeedAuth();onClose();return}if(!name.trim()||!brand||!loc.trim())return;ss(true);const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");const{data:ex}=await supabase.from("hotels").select("id").eq("slug",slug);if(ex?.length){alert("Already exists!");ss(false);return}await supabase.from("hotels").insert({name:name.trim(),brand,location:loc.trim(),slug});ss(false);onAdded();onClose()};
+return<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(4px)"}} onClick={onClose}><div style={{background:"#fff",borderRadius:16,padding:36,maxWidth:450,width:"100%",boxShadow:"0 24px 48px rgba(0,0,0,0.12)"}} onClick={e=>e.stopPropagation()}>
+<h2 style={{fontSize:22,fontWeight:800,marginBottom:4}}>Add a Hotel</h2><p style={{fontSize:13,color:"#999",marginBottom:24}}>Can't find your property?</p>
+<div style={{marginBottom:14}}><label style={LS}>Hotel Name</label><input value={name} onChange={e=>ck(e.target.value)} placeholder="The Westin Kierland Resort & Spa" style={IS}/>
+{sim.length>0&&<div style={{marginTop:10,border:"2px solid #000",borderRadius:10,padding:14}}><div style={{fontSize:12,fontWeight:700,marginBottom:10}}>⚠ Similar hotels:</div>{sim.map(h=><div key={h.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #f0f0f0"}}><div><div style={{fontSize:13,fontWeight:600}}>{h.name}</div><div style={{fontSize:11,color:"#999"}}>{h.brand} · {h.location}</div></div><button onClick={onClose} style={{...BT(),padding:"5px 12px",fontSize:11}}>View</button></div>)}<div style={{fontSize:11,color:"#bbb",marginTop:10}}>If none match, continue below.</div></div>}</div>
+<div style={{marginBottom:14}}><label style={LS}>Brand</label><select value={brand} onChange={e=>sb(e.target.value)} style={IS}><option value="">Select...</option>{BRANDS.map(b=><option key={b} value={b}>{b}</option>)}</select></div>
+<div style={{marginBottom:24}}><label style={LS}>Location</label><input value={loc} onChange={e=>sloc(e.target.value)} placeholder="Scottsdale, AZ" style={IS}/></div>
+<div style={{display:"flex",gap:8}}><button onClick={go} disabled={sub} style={{...BT(),padding:"12px 28px",opacity:sub?0.5:1}}>Add Hotel</button><button onClick={onClose} style={BT("#f5f5f5","#999")}>Cancel</button></div></div></div>}
 
-/* ─── Hotel Detail ─── */
-function HotelDetail({ hotel, user, onBack, onNeedAuth }) {
-  const [tab, setTab] = useState("perks");
-  const [showForm, setShowForm] = useState(false);
-  const [perks, setPerks] = useState([]); const [comments, setComments] = useState([]); const [loading, setLoading] = useState(true);
-  const [sTier, setSTier] = useState(""); const [sCat, setSCat] = useState(""); const [sDesc, setSDesc] = useState(""); const [sDate, setSDate] = useState(""); const [submitting, setSubmitting] = useState(false);
-  const [cTier, setCTier] = useState(""); const [cText, setCText] = useState("");
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    const { data: pd } = await supabase.from("perk_reports").select("*").eq("hotel_id", hotel.id).order("created_at", { ascending: false });
-    const pm = {};
-    (pd||[]).forEach(p => {
-      const k = `${p.elite_tier}|${p.category}|${p.description}`;
-      if (!pm[k]) { pm[k] = { ...p, total_confirmations: 1, summary: p.description, latest_stay: p.stay_date }; }
-      else { pm[k].total_confirmations += 1; if (p.stay_date && (!pm[k].latest_stay || p.stay_date > pm[k].latest_stay)) pm[k].latest_stay = p.stay_date; }
-    });
-    setPerks(Object.values(pm));
-    const { data: cd } = await supabase.from("comments").select("*").eq("hotel_id", hotel.id).order("created_at", { ascending: false });
-    setComments(cd||[]); setLoading(false);
-  }, [hotel.id]);
-  useEffect(() => { load(); }, [load]);
-
-  const dn = () => user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Anonymous";
-
-  const submitPerk = async () => {
-    if(!user){onNeedAuth();return;} if(!sTier||!sCat||!sDesc.trim())return;
-    setSubmitting(true);
-    const row = { hotel_id:hotel.id, user_id:user.id, display_name:dn(), elite_tier:sTier, category:sCat, description:sDesc.trim() };
-    if (sDate) row.stay_date = sDate;
-    await supabase.from("perk_reports").insert(row);
-    setSTier(""); setSCat(""); setSDesc(""); setSDate(""); setShowForm(false); setSubmitting(false); load();
-  };
-  const submitComment = async () => {
-    if(!user){onNeedAuth();return;} if(!cTier||!cText.trim())return;
-    await supabase.from("comments").insert({ hotel_id:hotel.id, user_id:user.id, display_name:dn(), elite_tier:cTier, text:cText.trim() });
-    setCTier(""); setCText(""); load();
-  };
-  const upvote = async (id) => {
-    if(!user){onNeedAuth();return;} const p=perks.find(x=>x.id===id); if(!p)return;
-    await supabase.from("perk_reports").insert({ hotel_id:hotel.id, user_id:user.id, display_name:dn(), elite_tier:p.elite_tier, category:p.category, description:p.description });
-    load();
-  };
-
-  const byTier = {}; TIERS.forEach(t => { byTier[t.key] = perks.filter(p => p.elite_tier === t.key); });
-
-  return <div>
-    <button onClick={onBack} style={{ background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#000",fontWeight:600,fontFamily:"'Inter',sans-serif",padding:0,marginBottom:24,textDecoration:"underline",textUnderlineOffset:3 }}>← Back</button>
-    <div style={{ background:"#000",borderRadius:16,padding:"36px 32px",marginBottom:28,color:"#fff",position:"relative",overflow:"hidden" }}>
-      <div style={{ fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.4)",fontFamily:"'Inter',sans-serif",textTransform:"uppercase",letterSpacing:2,marginBottom:10 }}>{hotel.brand}</div>
-      <h1 style={{ fontSize:28,fontWeight:800,margin:"0 0 6px",fontFamily:"'Inter',sans-serif",lineHeight:1.2,letterSpacing:-0.5 }}>{hotel.name}</h1>
-      <div style={{ fontSize:14,color:"rgba(255,255,255,0.5)",fontFamily:"'Inter',sans-serif" }}>{hotel.location}</div>
-      <div style={{ display:"flex",gap:16,marginTop:24,flexWrap:"wrap" }}>
-        {TIERS.map(t=><div key={t.key} style={{ background:"rgba(255,255,255,0.06)",borderRadius:10,padding:"12px 18px",border:"1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ fontSize:10,color:"rgba(255,255,255,0.35)",fontFamily:"'Inter',sans-serif",textTransform:"uppercase",letterSpacing:1,marginBottom:4 }}>{t.label}</div>
-          <div style={{ fontSize:22,fontWeight:800,color:"#fff",fontFamily:"'Inter',sans-serif" }}>{byTier[t.key]?.length||0} <span style={{ fontSize:11,fontWeight:400,color:"rgba(255,255,255,0.35)" }}>perks</span></div>
-        </div>)}
-      </div>
-    </div>
-    <div style={{ display:"flex",gap:8,marginBottom:24,alignItems:"center",flexWrap:"wrap" }}>
-      {[{k:"perks",l:"Perks Overview"},{k:"comments",l:`Tips (${comments.length})`}].map(x=>
-        <button key={x.k} onClick={()=>setTab(x.k)} style={{ background:tab===x.k?"#000":"transparent",color:tab===x.k?"#fff":"#999",border:tab===x.k?"none":"1px solid #e0e0e0",borderRadius:8,padding:"9px 20px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif" }}>{x.l}</button>
-      )}
-      <button onClick={()=>{if(!user){onNeedAuth();return;}setShowForm(!showForm);}} style={{ marginLeft:"auto",background:"#fff",color:"#000",border:"2px solid #000",borderRadius:8,padding:"8px 20px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif" }}>+ Report a Perk</button>
-    </div>
-    {showForm && <div style={{ background:"#fafafa",borderRadius:12,padding:28,border:"1px solid #e8e8e8",marginBottom:24 }}>
-      <div style={{ fontSize:18,fontWeight:800,color:"#000",fontFamily:"'Inter',sans-serif",marginBottom:20,letterSpacing:-0.3 }}>Report a Perk</div>
-      <div style={{ display:"flex",gap:14,flexWrap:"wrap",marginBottom:16 }}>
-        <div style={{flex:"1 1 180px"}}><label style={LS}>Your Elite Tier</label><select value={sTier} onChange={e=>setSTier(e.target.value)} style={IS}><option value="">Select...</option>{TIERS.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}</select></div>
-        <div style={{flex:"1 1 180px"}}><label style={LS}>Category</label><select value={sCat} onChange={e=>setSCat(e.target.value)} style={IS}><option value="">Select...</option>{PERK_CATEGORIES.map(c=><option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}</select></div>
-        <div style={{flex:"1 1 160px"}}><label style={LS}>When did you stay?</label><input type="month" value={sDate} onChange={e=>setSDate(e.target.value)} style={IS}/></div>
-      </div>
-      <div style={{marginBottom:16}}><label style={LS}>Describe the perk</label><textarea value={sDesc} onChange={e=>setSDesc(e.target.value)} placeholder="e.g., Free lattes at the lobby café — just show your room key" style={{...IS,minHeight:80,resize:"vertical"}}/></div>
-      <div style={{display:"flex",gap:8}}>
-        <button onClick={submitPerk} disabled={submitting} style={{ background:"#000",color:"#fff",border:"none",borderRadius:8,padding:"11px 28px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",opacity:submitting?0.5:1 }}>Submit</button>
-        <button onClick={()=>setShowForm(false)} style={{ background:"transparent",color:"#999",border:"1px solid #ddd",borderRadius:8,padding:"11px 28px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif" }}>Cancel</button>
-      </div>
-    </div>}
-    {loading ? <div style={{textAlign:"center",padding:40,color:"#ccc",fontFamily:"'Inter',sans-serif"}}>Loading...</div>
-    : tab==="perks" ? <div>{TIERS.map(t=><TierSection key={t.key} tier={t.key} perks={byTier[t.key]} user={user} onUpvote={upvote}/>)}</div>
-    : <div style={{ background:"#fff",borderRadius:12,padding:"8px 24px 24px",border:"1px solid #e8e8e8" }}>
-        <div style={{ fontSize:14,fontWeight:700,color:"#000",fontFamily:"'Inter',sans-serif",padding:"18px 0 10px",borderBottom:"1px solid #f0f0f0",marginBottom:4 }}>Guest Tips</div>
-        {comments.map((c,i)=><Cmt key={c.id||i} comment={c}/>)}
-        {!comments.length && <div style={{padding:24,textAlign:"center",color:"#ccc",fontFamily:"'Inter',sans-serif",fontSize:13}}>No tips yet.</div>}
-        <div style={{marginTop:20,padding:20,background:"#fafafa",borderRadius:10,border:"1px solid #eee"}}>
-          <div style={{fontSize:13,fontWeight:600,color:"#333",fontFamily:"'Inter',sans-serif",marginBottom:12}}>Share a tip</div>
-          <select value={cTier} onChange={e=>setCTier(e.target.value)} style={{...IS,maxWidth:200,marginBottom:10}}><option value="">Your tier...</option>{TIERS.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}</select>
-          <textarea value={cText} onChange={e=>setCText(e.target.value)} placeholder="Share a tip..." style={{...IS,minHeight:60,resize:"vertical",marginBottom:10}}/>
-          <button onClick={submitComment} style={{ background:"#000",color:"#fff",border:"none",borderRadius:8,padding:"9px 22px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif" }}>Post Tip</button>
-        </div>
-      </div>}
-  </div>;
-}
-
-function HotelCard({ hotel, perkCounts, onClick }) {
-  return <div onClick={onClick} style={{ background:"#fff",borderRadius:12,padding:24,border:"1px solid #e8e8e8",cursor:"pointer",transition:"all 0.2s" }}
-    onMouseEnter={e=>{e.currentTarget.style.borderColor="#000";e.currentTarget.style.transform="translateY(-1px)";}}
-    onMouseLeave={e=>{e.currentTarget.style.borderColor="#e8e8e8";e.currentTarget.style.transform="translateY(0)";}}>
-    <div style={{ fontSize:10,fontWeight:700,color:"#999",fontFamily:"'Inter',sans-serif",textTransform:"uppercase",letterSpacing:1.5,marginBottom:8 }}>{hotel.brand}</div>
-    <div style={{ fontSize:17,fontWeight:700,color:"#000",fontFamily:"'Inter',sans-serif",marginBottom:4,lineHeight:1.3,letterSpacing:-0.2 }}>{hotel.name}</div>
-    <div style={{ fontSize:13,color:"#aaa",fontFamily:"'Inter',sans-serif",marginBottom:16 }}>{hotel.location}</div>
-    <div style={{ fontSize:12,color:"#888",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:5 }}>
-      <span style={{ color:"#000",fontWeight:800,fontSize:16 }}>{perkCounts[hotel.id]||0}</span> perk reports
-    </div>
-  </div>;
-}
-
-function AddHotelModal({ onClose, user, onNeedAuth, onAdded, existingHotels }) {
-  const [name, setName] = useState(""); const [brand, setBrand] = useState(""); const [location, setLocation] = useState("");
-  const [submitting, setSubmitting] = useState(false); const [similar, setSimilar] = useState([]);
-  const check = (v) => { setName(v); if(v.trim().length<3){setSimilar([]);return;} const w=v.toLowerCase().replace(/[^a-z0-9\s]/g,"").split(/\s+/).filter(x=>x.length>2); if(!w.length){setSimilar([]);return;} setSimilar(existingHotels.filter(h=>{const n=h.name.toLowerCase().replace(/[^a-z0-9\s]/g,"");return w.some(x=>n.includes(x));}).slice(0,5)); };
-  const submit = async () => {
-    if(!user){onNeedAuth();onClose();return;} if(!name.trim()||!brand||!location.trim())return;
-    setSubmitting(true); const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
-    const{data:ex}=await supabase.from("hotels").select("id").eq("slug",slug);
-    if(ex&&ex.length){alert("This hotel already exists!");setSubmitting(false);return;}
-    await supabase.from("hotels").insert({name:name.trim(),brand,location:location.trim(),slug});
-    setSubmitting(false); onAdded(); onClose();
-  };
-  return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(4px)"}} onClick={onClose}>
-    <div style={{background:"#fff",borderRadius:16,padding:36,maxWidth:450,width:"100%",boxShadow:"0 24px 48px rgba(0,0,0,0.12)"}} onClick={e=>e.stopPropagation()}>
-      <h2 style={{fontSize:22,fontFamily:"'Inter',sans-serif",fontWeight:800,marginBottom:4,letterSpacing:-0.5}}>Add a Hotel</h2>
-      <p style={{fontSize:13,color:"#999",marginBottom:24,fontFamily:"'Inter',sans-serif"}}>Can't find your property? Add it.</p>
-      <div style={{marginBottom:14}}>
-        <label style={LS}>Hotel Name</label>
-        <input value={name} onChange={e=>check(e.target.value)} placeholder="The Westin Kierland Resort & Spa" style={IS}/>
-        {similar.length>0 && <div style={{marginTop:10,background:"#fff",border:"2px solid #000",borderRadius:10,padding:14}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#000",marginBottom:10,fontFamily:"'Inter',sans-serif"}}>⚠ Similar hotels exist:</div>
-          {similar.map(h=><div key={h.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #f0f0f0"}}>
-            <div><div style={{fontSize:13,fontWeight:600,color:"#000",fontFamily:"'Inter',sans-serif"}}>{h.name}</div><div style={{fontSize:11,color:"#999",fontFamily:"'Inter',sans-serif"}}>{h.brand} · {h.location}</div></div>
-            <button onClick={onClose} style={{background:"#000",color:"#fff",border:"none",borderRadius:6,padding:"5px 12px",fontSize:11,cursor:"pointer",fontFamily:"'Inter',sans-serif",fontWeight:600}}>View</button>
-          </div>)}
-          <div style={{fontSize:11,color:"#bbb",marginTop:10,fontFamily:"'Inter',sans-serif"}}>If none match, continue below.</div>
-        </div>}
-      </div>
-      <div style={{marginBottom:14}}><label style={LS}>Brand</label><select value={brand} onChange={e=>setBrand(e.target.value)} style={IS}><option value="">Select brand...</option>{BRANDS.map(b=><option key={b} value={b}>{b}</option>)}</select></div>
-      <div style={{marginBottom:24}}><label style={LS}>Location</label><input value={location} onChange={e=>setLocation(e.target.value)} placeholder="Scottsdale, AZ" style={IS}/></div>
-      <div style={{display:"flex",gap:8}}>
-        <button onClick={submit} disabled={submitting} style={{background:"#000",color:"#fff",border:"none",borderRadius:10,padding:"12px 28px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",opacity:submitting?0.5:1}}>Add Hotel</button>
-        <button onClick={onClose} style={{background:"transparent",color:"#999",border:"1px solid #ddd",borderRadius:10,padding:"12px 28px",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Cancel</button>
-      </div>
-    </div>
-  </div>;
-}
-
-/* ─── Main App ─── */
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [hotels, setHotels] = useState([]); const [perkCounts, setPerkCounts] = useState({});
-  const [search, setSearch] = useState(""); const [brandFilter, setBrandFilter] = useState("");
-  const [selected, setSelected] = useState(null);
-  const [showAuth, setShowAuth] = useState(false); const [showAdd, setShowAdd] = useState(false);
-  const [page, setPage] = useState("home"); // "home" | "leaderboard"
-  const [loading, setLoading] = useState(true);
-
-  const loadHotels = async () => {
-    setLoading(true);
-    const{data}=await supabase.from("hotels").select("*").order("name");
-    setHotels(data||[]);
-    const{data:rp}=await supabase.from("perk_reports").select("hotel_id");
-    const c={}; (rp||[]).forEach(r=>{c[r.hotel_id]=(c[r.hotel_id]||0)+1;}); setPerkCounts(c);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({data})=>{if(data?.user)setUser(data.user);});
-    supabase.auth.onAuthStateChange((_,s)=>{setUser(s?.user||null);});
-    loadHotels();
-  }, []);
-
-  const filtered = hotels.filter(h => {
-    const ms = !search || h.name.toLowerCase().includes(search.toLowerCase()) || h.location.toLowerCase().includes(search.toLowerCase());
-    const mb = !brandFilter || h.brand === brandFilter;
-    return ms && mb;
-  });
-  const usedBrands = [...new Set(hotels.map(h=>h.brand))].sort();
-
-  return <div style={{ minHeight: "100vh", background: "#f5f5f5", fontFamily: "'Inter',sans-serif" }}>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-    {showAuth && <AuthModal onClose={()=>setShowAuth(false)} onAuth={()=>supabase.auth.getUser().then(({data})=>setUser(data?.user))}/>}
-    {showAdd && <AddHotelModal onClose={()=>setShowAdd(false)} user={user} onNeedAuth={()=>setShowAuth(true)} onAdded={loadHotels} existingHotels={hotels}/>}
-
-    <div style={{ background:"#000", padding:"0 0 56px", position:"relative" }}>
-      <div style={{ maxWidth:920, margin:"0 auto", padding:"20px 24px 0" }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:48, flexWrap:"wrap", gap:10 }}>
-          <div onClick={()=>{setSelected(null);setPage("home");}} style={{ cursor:"pointer", display:"flex", alignItems:"baseline" }}>
-            <span style={{ fontSize:22, fontWeight:900, color:"#fff", fontFamily:"'Inter',sans-serif", letterSpacing:-0.5 }}>Perk</span>
-            <span style={{ fontSize:22, fontWeight:900, color:"#555", fontFamily:"'Inter',sans-serif", letterSpacing:-0.5 }}>Snob</span>
-          </div>
-          <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-            <button onClick={()=>{setSelected(null);setPage("leaderboard");}} style={{ background:"transparent",color:"rgba(255,255,255,0.5)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif" }}>🏆 Leaderboard</button>
-            {user ? <>
-              <span style={{fontSize:12,color:"rgba(255,255,255,0.4)",fontFamily:"'Inter',sans-serif"}}>{user.user_metadata?.display_name||user.email?.split("@")[0]}</span>
-              <button onClick={async()=>{await supabase.auth.signOut();setUser(null);}} style={{background:"transparent",color:"rgba(255,255,255,0.5)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Sign Out</button>
-            </> : <button onClick={()=>setShowAuth(true)} style={{background:"transparent",color:"rgba(255,255,255,0.5)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Sign In</button>}
-            <button onClick={()=>user?setShowAdd(true):setShowAuth(true)} style={{background:"#fff",color:"#000",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>+ Add Hotel</button>
-          </div>
-        </div>
-        {!selected && page==="home" && <>
-          <h1 style={{ fontSize:46, fontWeight:900, color:"#fff", fontFamily:"'Inter',sans-serif", margin:"0 0 12px", lineHeight:1.05, maxWidth:500, letterSpacing:-2 }}>
-            Elite hotel perks,<br/>crowdsourced.
-          </h1>
-          <p style={{ fontSize:15, color:"rgba(255,255,255,0.35)", fontFamily:"'Inter',sans-serif", margin:"0 0 32px", maxWidth:440, lineHeight:1.6 }}>
-            Real Marriott Bonvoy elite benefits reported by real guests. Know what you're getting before you book.
-          </p>
-          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-            <input type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search hotels or destinations..." style={{ flex:"1 1 300px",padding:"14px 18px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Inter',sans-serif",outline:"none",boxSizing:"border-box" }}/>
-            <select value={brandFilter} onChange={e=>setBrandFilter(e.target.value)} style={{ padding:"14px 36px 14px 18px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:13,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer",minWidth:160 }}>
-              <option value="" style={{color:"#000"}}>All Brands</option>
-              {usedBrands.map(b=><option key={b} value={b} style={{color:"#000"}}>{b}</option>)}
-            </select>
-          </div>
-        </>}
-      </div>
-    </div>
-
-    <div style={{ maxWidth:920, margin:"-28px auto 0", padding:"0 24px 60px", position:"relative" }}>
-      {page === "leaderboard" ? <Leaderboard onClose={()=>setPage("home")}/> :
-      selected ? <HotelDetail hotel={selected} user={user} onBack={()=>setSelected(null)} onNeedAuth={()=>setShowAuth(true)}/> :
-      loading ? <div style={{textAlign:"center",padding:60,color:"#ccc",fontFamily:"'Inter',sans-serif"}}>Loading...</div> : <>
-        <div style={{marginBottom:16}}><span style={{fontSize:12,color:"#bbb",fontFamily:"'Inter',sans-serif"}}>{filtered.length} propert{filtered.length!==1?"ies":"y"}</span></div>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))", gap:12 }}>
-          {filtered.map(h=><HotelCard key={h.id} hotel={h} perkCounts={perkCounts} onClick={()=>setSelected(h)}/>)}
-        </div>
-        {!filtered.length && <div style={{textAlign:"center",padding:"60px 20px"}}>
-          <div style={{fontSize:40,marginBottom:12}}>🏨</div>
-          <div style={{fontSize:18,fontWeight:800,color:"#000",fontFamily:"'Inter',sans-serif",marginBottom:6}}>No hotels found</div>
-          <div style={{fontSize:13,color:"#bbb",fontFamily:"'Inter',sans-serif",marginBottom:20}}>Try a different search</div>
-          <button onClick={()=>user?setShowAdd(true):setShowAuth(true)} style={{background:"#000",color:"#fff",border:"none",borderRadius:8,padding:"11px 24px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>+ Add a Hotel</button>
-        </div>}
-      </>}
-    </div>
-  </div>;
-}
+export default function App(){const[user,su]=useState(null),[hotels,sh]=useState([]),[pc,spc]=useState({}),[scores,ssc]=useState({}),[search,ss]=useState(""),[bf,sbf]=useState(""),[sel,ssel]=useState(null),[showAuth,ssa]=useState(false),[showAdd,ssad]=useState(false),[page,spage]=useState("home"),[profId,spid]=useState(null),[ld,sld]=useState(true),[ml,sml]=useState(!!window.google);
+const loadH=async()=>{sld(true);const{data}=await supabase.from("hotels").select("*").order("name");sh(data||[]);const{data:rp}=await supabase.from("perk_reports").select("hotel_id,category");const c={},cats={};(rp||[]).forEach(r=>{c[r.hotel_id]=(c[r.hotel_id]||0)+1;if(!cats[r.hotel_id])cats[r.hotel_id]=new Set();cats[r.hotel_id].add(r.category)});spc(c);const sc={};Object.keys(c).forEach(id=>{sc[id]=pscore(c[id],cats[id]?.size||0)});ssc(sc);sld(false)};
+useEffect(()=>{if(window.google){sml(true);return}const s=document.createElement("script");s.src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&libraries=places";s.async=true;s.onload=()=>sml(true);document.head.appendChild(s)},[]);
+useEffect(()=>{supabase.auth.getUser().then(({data})=>{if(data?.user)su(data.user)});supabase.auth.onAuthStateChange((_,s)=>{su(s?.user||null)});loadH()},[]);
+const goHome=()=>{ssel(null);spage("home");spid(null)};const viewProf=id=>{spid(id);spage("profile");ssel(null)};
+const filt=hotels.filter(h=>{const ms=!search||h.name.toLowerCase().includes(search.toLowerCase())||h.location.toLowerCase().includes(search.toLowerCase());const mb=!bf||h.brand===bf;return ms&&mb});
+const ub=[...new Set(hotels.map(h=>h.brand))].sort();
+const nb=(l,e,p)=><button onClick={()=>{ssel(null);spage(p)}} style={{background:page===p?"rgba(255,255,255,0.15)":"transparent",color:"rgba(255,255,255,0.6)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",whiteSpace:"nowrap"}}>{e} {l}</button>;
+return<div style={{minHeight:"100vh",background:"#f5f5f5",fontFamily:"'Inter',sans-serif"}}><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+{showAuth&&<AuthModal onClose={()=>ssa(false)} onAuth={()=>supabase.auth.getUser().then(({data})=>su(data?.user))}/>}
+{showAdd&&<AddHotelModal onClose={()=>ssad(false)} user={user} onNeedAuth={()=>ssa(true)} onAdded={loadH} existingHotels={hotels}/>}
+<div style={{background:"#000",padding:"0 0 56px"}}><div style={{maxWidth:960,margin:"0 auto",padding:"16px 24px 0"}}>
+<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
+<div onClick={goHome} style={{cursor:"pointer",display:"flex",alignItems:"baseline"}}><span style={{fontSize:22,fontWeight:900,color:"#fff",letterSpacing:-0.5}}>Perk</span><span style={{fontSize:22,fontWeight:900,color:"#555",letterSpacing:-0.5}}>Snob</span></div>
+<div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>{nb("Map","🗺️","map")}{nb("Search","🔍","search")}{nb("Compare","⚖️","compare")}{nb("Board","🏆","leaderboard")}
+{user?<><span style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>{dname(user)}</span><button onClick={async()=>{await supabase.auth.signOut();su(null)}} style={{background:"transparent",color:"rgba(255,255,255,0.5)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:8,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer"}}>Out</button></>:<button onClick={()=>ssa(true)} style={{background:"transparent",color:"rgba(255,255,255,0.5)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:8,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer"}}>Sign In</button>}
+<button onClick={()=>user?ssad(true):ssa(true)} style={{background:"#fff",color:"#000",border:"none",borderRadius:8,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>+ Add</button></div></div>
+{!sel&&page==="home"&&<><h1 style={{fontSize:42,fontWeight:900,color:"#fff",margin:"32px 0 12px",lineHeight:1.05,maxWidth:500,letterSpacing:-2}}>Elite hotel perks,<br/>crowdsourced.</h1>
+<p style={{fontSize:15,color:"rgba(255,255,255,0.35)",margin:"0 0 32px",maxWidth:440,lineHeight:1.6}}>Real Marriott Bonvoy elite benefits reported by real guests.</p>
+<div style={{display:"flex",gap:10,flexWrap:"wrap"}}><input type="text" value={search} onChange={e=>ss(e.target.value)} placeholder="Search hotels or destinations..." style={{flex:"1 1 280px",padding:"14px 18px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Inter',sans-serif",outline:"none",boxSizing:"border-box"}}/>
+<select value={bf} onChange={e=>sbf(e.target.value)} style={{padding:"14px 36px 14px 18px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:13,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer",minWidth:160}}><option value="" style={{color:"#000"}}>All Brands</option>{ub.map(b=><option key={b} value={b} style={{color:"#000"}}>{b}</option>)}</select></div></>}</div></div>
+<div style={{maxWidth:960,margin:"-28px auto 0",padding:"0 24px 60px",position:"relative"}}>
+{page==="leaderboard"?<Leaderboard onClose={goHome} onProfile={viewProf}/>:page==="map"?<>{!ml?<div style={{textAlign:"center",padding:60,color:"#ccc"}}>Loading map...</div>:<MapView hotels={filt} perkCounts={pc} onSelect={h=>{ssel(h);spage("home")}}/>}</>:page==="search"?<><button onClick={goHome} style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#000",fontWeight:600,fontFamily:"'Inter',sans-serif",padding:0,marginBottom:24,textDecoration:"underline",textUnderlineOffset:3}}>← Back</button><PerkSearch user={user} onNeedAuth={()=>ssa(true)}/></>:page==="compare"?<Comparison hotels={hotels} onClose={goHome}/>:page==="profile"&&profId?<UserProfile userId={profId} onClose={goHome}/>:sel?<HotelDetail hotel={sel} user={user} onBack={()=>ssel(null)} onNeedAuth={()=>ssa(true)}/>:ld?<div style={{textAlign:"center",padding:60,color:"#ccc"}}>Loading...</div>:<><div style={{marginBottom:16}}><span style={{fontSize:12,color:"#bbb"}}>{filt.length} propert{filt.length!==1?"ies":"y"}</span></div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:12}}>{filt.map(h=><HotelCard key={h.id} hotel={h} perkCounts={pc} score={scores[h.id]||0} onClick={()=>ssel(h)}/>)}</div>
+{!filt.length&&<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:40,marginBottom:12}}>🏨</div><div style={{fontSize:18,fontWeight:800,color:"#000",marginBottom:6}}>No hotels found</div><div style={{fontSize:13,color:"#bbb",marginBottom:20}}>Try a different search</div><button onClick={()=>user?ssad(true):ssa(true)} style={BT()}>+ Add a Hotel</button></div>}</>}</div></div>}
