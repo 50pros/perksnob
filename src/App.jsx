@@ -6,7 +6,6 @@ const TIERS = [
   { key: "titanium", label: "Titanium Elite", color: "#555" },
   { key: "platinum", label: "Platinum Elite", color: "#999" },
 ];
-
 const PERK_CATEGORIES = [
   { key: "breakfast", icon: "🍳", label: "Breakfast" },
   { key: "lounge", icon: "🍸", label: "Lounge Access" },
@@ -19,7 +18,6 @@ const PERK_CATEGORIES = [
   { key: "fnb_credit", icon: "💳", label: "F&B Credit" },
   { key: "other", icon: "✨", label: "Other" },
 ];
-
 const BRANDS = ["W Hotels","The Ritz-Carlton","St. Regis","EDITION","The Luxury Collection","JW Marriott","Marriott Hotels","Westin","Sheraton","Delta Hotels","Le Méridien","Autograph Collection","Renaissance","Tribute Portfolio","Courtyard","Residence Inn","SpringHill Suites","Fairfield","Four Points","Aloft","Element","AC Hotels","Moxy"];
 
 const getCat = (k) => PERK_CATEGORIES.find(c => c.key === k) || PERK_CATEGORIES[9];
@@ -27,6 +25,9 @@ const getTier = (k) => TIERS.find(t => t.key === k) || TIERS[2];
 const confColor = (c) => c === "high" ? "#1a1a1a" : c === "medium" ? "#666" : "#aaa";
 const confLabel = (c) => c === "high" ? "Well established" : c === "medium" ? "Frequently reported" : "Few reports";
 const confLevel = (n) => n >= 8 ? "high" : n >= 4 ? "medium" : "low";
+const badgeEmoji = (b) => b === "Snob Supreme" ? "👑" : b === "Elite Reporter" ? "⭐" : b === "Perk Scout" ? "🔍" : b === "Contributor" ? "✍️" : "🆕";
+const timeAgo = (d) => { const s = Math.floor((Date.now() - new Date(d)) / 1000); if (s < 60) return "just now"; if (s < 3600) return Math.floor(s/60) + "m ago"; if (s < 86400) return Math.floor(s/3600) + "h ago"; if (s < 2592000) return Math.floor(s/86400) + "d ago"; return Math.floor(s/2592000) + "mo ago"; };
+const fmtStay = (d) => { if (!d) return null; return new Date(d + "T00:00:00").toLocaleDateString("en-US", { year: "numeric", month: "short" }); };
 
 const LS = { display: "block", fontSize: 11, fontWeight: 600, color: "#999", fontFamily: "'Inter',sans-serif", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.8 };
 const IS = { width: "100%", padding: "11px 14px", borderRadius: 8, border: "1px solid #e0e0e0", fontSize: 14, fontFamily: "'Inter',sans-serif", background: "#fff", color: "#000", outline: "none", boxSizing: "border-box" };
@@ -39,12 +40,16 @@ function Badge({ confidence, reports }) {
 
 function PerkCard({ perk, user, onUpvote }) {
   const cat = getCat(perk.category), conf = confLevel(perk.total_confirmations);
+  const stayLabel = fmtStay(perk.latest_stay);
   return <div style={{ display: "flex", gap: 14, padding: "16px 0", borderBottom: "1px solid #f0f0f0" }}>
     <div style={{ width: 40, height: 40, borderRadius: 10, background: "#f5f5f5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0, border: "1px solid #eee" }}>{cat.icon}</div>
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter',sans-serif", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.8 }}>{cat.label}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "#1a1a1a", fontFamily: "'Inter',sans-serif", textTransform: "uppercase", letterSpacing: 0.8 }}>{cat.label}</span>
+        {stayLabel && <span style={{ fontSize: 10, color: "#aaa", fontFamily: "'Inter',sans-serif", background: "#f8f8f8", padding: "2px 6px", borderRadius: 4 }}>Latest stay: {stayLabel}</span>}
+      </div>
       <div style={{ fontSize: 14, color: "#333", lineHeight: 1.6, fontFamily: "'Inter',sans-serif" }}>{perk.summary}</div>
-      <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <Badge confidence={conf} reports={perk.total_confirmations}/>
         {user && <button onClick={() => onUpvote(perk.id)} style={{ background: "none", border: "1px solid #ddd", borderRadius: 6, padding: "3px 10px", fontSize: 11, cursor: "pointer", color: "#666", fontFamily: "'Inter',sans-serif" }}>✓ Confirm</button>}
       </div>
@@ -69,7 +74,7 @@ function TierSection({ tier, perks, user, onUpvote }) {
   </div>;
 }
 
-function Comment({ comment }) {
+function Cmt({ comment }) {
   const t = getTier(comment.elite_tier);
   const date = new Date(comment.created_at).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"});
   return <div style={{ padding: "16px 0", borderBottom: "1px solid #f0f0f0" }}>
@@ -83,6 +88,73 @@ function Comment({ comment }) {
   </div>;
 }
 
+/* ─── Leaderboard ─── */
+function Leaderboard({ onClose }) {
+  const [leaders, setLeaders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("leaderboard").select("*").limit(25);
+      setLeaders(data || []);
+      setLoading(false);
+    })();
+  }, []);
+
+  return <div>
+    <button onClick={onClose} style={{ background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#000",fontWeight:600,fontFamily:"'Inter',sans-serif",padding:0,marginBottom:24,textDecoration:"underline",textUnderlineOffset:3 }}>← Back</button>
+    <div style={{ background:"#000",borderRadius:16,padding:"36px 32px",marginBottom:28,color:"#fff" }}>
+      <div style={{ fontSize:11,fontWeight:600,color:"rgba(255,255,255,0.4)",fontFamily:"'Inter',sans-serif",textTransform:"uppercase",letterSpacing:2,marginBottom:10 }}>Community</div>
+      <h1 style={{ fontSize:32,fontWeight:900,margin:0,fontFamily:"'Inter',sans-serif",letterSpacing:-1 }}>Leaderboard</h1>
+      <p style={{ fontSize:14,color:"rgba(255,255,255,0.4)",fontFamily:"'Inter',sans-serif",marginTop:8 }}>Top contributors making hotel intel better for everyone.</p>
+    </div>
+
+    {/* Badge legend */}
+    <div style={{ display:"flex",gap:12,marginBottom:24,flexWrap:"wrap" }}>
+      {[{b:"Snob Supreme",n:"50+ reports"},{b:"Elite Reporter",n:"25+"},{b:"Perk Scout",n:"10+"},{b:"Contributor",n:"5+"},{b:"Newcomer",n:"< 5"}].map(x =>
+        <div key={x.b} style={{ background:"#fff",border:"1px solid #eee",borderRadius:8,padding:"8px 14px",display:"flex",alignItems:"center",gap:6 }}>
+          <span style={{ fontSize:14 }}>{badgeEmoji(x.b)}</span>
+          <div>
+            <div style={{ fontSize:12,fontWeight:700,color:"#000",fontFamily:"'Inter',sans-serif" }}>{x.b}</div>
+            <div style={{ fontSize:10,color:"#aaa",fontFamily:"'Inter',sans-serif" }}>{x.n}</div>
+          </div>
+        </div>
+      )}
+    </div>
+
+    {loading ? <div style={{textAlign:"center",padding:40,color:"#ccc"}}>Loading...</div> :
+    <div style={{ background:"#fff",borderRadius:12,border:"1px solid #e8e8e8",overflow:"hidden" }}>
+      {/* Header row */}
+      <div style={{ display:"grid",gridTemplateColumns:"50px 1fr 100px 100px 100px",padding:"14px 20px",background:"#fafafa",borderBottom:"1px solid #eee",fontSize:10,fontWeight:700,color:"#999",fontFamily:"'Inter',sans-serif",textTransform:"uppercase",letterSpacing:1 }}>
+        <span>#</span><span>Contributor</span><span style={{textAlign:"center"}}>Reports</span><span style={{textAlign:"center"}}>Hotels</span><span style={{textAlign:"right"}}>Last Active</span>
+      </div>
+      {leaders.map((l, i) => (
+        <div key={l.user_id||i} style={{ display:"grid",gridTemplateColumns:"50px 1fr 100px 100px 100px",padding:"16px 20px",borderBottom:"1px solid #f5f5f5",alignItems:"center",transition:"background 0.1s" }}
+          onMouseEnter={e=>e.currentTarget.style.background="#fafafa"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+          <span style={{ fontSize:16,fontWeight:800,color:i<3?"#000":"#ccc",fontFamily:"'Inter',sans-serif" }}>
+            {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+          </span>
+          <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+            <div style={{ width:32,height:32,borderRadius:"50%",background:i<3?"#000":"#e0e0e0",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,fontFamily:"'Inter',sans-serif" }}>
+              {l.display_name?.charAt(0).toUpperCase() || "?"}
+            </div>
+            <div>
+              <div style={{ fontSize:14,fontWeight:600,color:"#000",fontFamily:"'Inter',sans-serif" }}>{l.display_name}</div>
+              <div style={{ fontSize:11,color:"#aaa",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",gap:4 }}>
+                <span>{badgeEmoji(l.badge)}</span> {l.badge}
+              </div>
+            </div>
+          </div>
+          <div style={{ textAlign:"center",fontSize:18,fontWeight:800,color:"#000",fontFamily:"'Inter',sans-serif" }}>{l.total_reports}</div>
+          <div style={{ textAlign:"center",fontSize:14,color:"#666",fontFamily:"'Inter',sans-serif" }}>{l.hotels_covered}</div>
+          <div style={{ textAlign:"right",fontSize:12,color:"#bbb",fontFamily:"'Inter',sans-serif" }}>{timeAgo(l.last_active)}</div>
+        </div>
+      ))}
+      {!leaders.length && <div style={{ padding:40,textAlign:"center",color:"#ccc",fontFamily:"'Inter',sans-serif" }}>No contributions yet. Be the first!</div>}
+    </div>}
+  </div>;
+}
+
+/* ─── Auth Modal ─── */
 function AuthModal({ onClose, onAuth }) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [displayName, setDisplayName] = useState("");
@@ -110,18 +182,23 @@ function AuthModal({ onClose, onAuth }) {
   </div>;
 }
 
+/* ─── Hotel Detail ─── */
 function HotelDetail({ hotel, user, onBack, onNeedAuth }) {
   const [tab, setTab] = useState("perks");
   const [showForm, setShowForm] = useState(false);
   const [perks, setPerks] = useState([]); const [comments, setComments] = useState([]); const [loading, setLoading] = useState(true);
-  const [sTier, setSTier] = useState(""); const [sCat, setSCat] = useState(""); const [sDesc, setSDesc] = useState(""); const [submitting, setSubmitting] = useState(false);
+  const [sTier, setSTier] = useState(""); const [sCat, setSCat] = useState(""); const [sDesc, setSDesc] = useState(""); const [sDate, setSDate] = useState(""); const [submitting, setSubmitting] = useState(false);
   const [cTier, setCTier] = useState(""); const [cText, setCText] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     const { data: pd } = await supabase.from("perk_reports").select("*").eq("hotel_id", hotel.id).order("created_at", { ascending: false });
     const pm = {};
-    (pd||[]).forEach(p => { const k=`${p.elite_tier}|${p.category}|${p.description}`; if(!pm[k])pm[k]={...p,total_confirmations:1,summary:p.description}; else pm[k].total_confirmations+=1; });
+    (pd||[]).forEach(p => {
+      const k = `${p.elite_tier}|${p.category}|${p.description}`;
+      if (!pm[k]) { pm[k] = { ...p, total_confirmations: 1, summary: p.description, latest_stay: p.stay_date }; }
+      else { pm[k].total_confirmations += 1; if (p.stay_date && (!pm[k].latest_stay || p.stay_date > pm[k].latest_stay)) pm[k].latest_stay = p.stay_date; }
+    });
     setPerks(Object.values(pm));
     const { data: cd } = await supabase.from("comments").select("*").eq("hotel_id", hotel.id).order("created_at", { ascending: false });
     setComments(cd||[]); setLoading(false);
@@ -133,8 +210,10 @@ function HotelDetail({ hotel, user, onBack, onNeedAuth }) {
   const submitPerk = async () => {
     if(!user){onNeedAuth();return;} if(!sTier||!sCat||!sDesc.trim())return;
     setSubmitting(true);
-    await supabase.from("perk_reports").insert({ hotel_id:hotel.id, user_id:user.id, display_name:dn(), elite_tier:sTier, category:sCat, description:sDesc.trim() });
-    setSTier(""); setSCat(""); setSDesc(""); setShowForm(false); setSubmitting(false); load();
+    const row = { hotel_id:hotel.id, user_id:user.id, display_name:dn(), elite_tier:sTier, category:sCat, description:sDesc.trim() };
+    if (sDate) row.stay_date = sDate;
+    await supabase.from("perk_reports").insert(row);
+    setSTier(""); setSCat(""); setSDesc(""); setSDate(""); setShowForm(false); setSubmitting(false); load();
   };
   const submitComment = async () => {
     if(!user){onNeedAuth();return;} if(!cTier||!cText.trim())return;
@@ -171,10 +250,11 @@ function HotelDetail({ hotel, user, onBack, onNeedAuth }) {
     {showForm && <div style={{ background:"#fafafa",borderRadius:12,padding:28,border:"1px solid #e8e8e8",marginBottom:24 }}>
       <div style={{ fontSize:18,fontWeight:800,color:"#000",fontFamily:"'Inter',sans-serif",marginBottom:20,letterSpacing:-0.3 }}>Report a Perk</div>
       <div style={{ display:"flex",gap:14,flexWrap:"wrap",marginBottom:16 }}>
-        <div style={{flex:"1 1 200px"}}><label style={LS}>Your Elite Tier</label><select value={sTier} onChange={e=>setSTier(e.target.value)} style={IS}><option value="">Select...</option>{TIERS.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}</select></div>
-        <div style={{flex:"1 1 200px"}}><label style={LS}>Category</label><select value={sCat} onChange={e=>setSCat(e.target.value)} style={IS}><option value="">Select...</option>{PERK_CATEGORIES.map(c=><option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}</select></div>
+        <div style={{flex:"1 1 180px"}}><label style={LS}>Your Elite Tier</label><select value={sTier} onChange={e=>setSTier(e.target.value)} style={IS}><option value="">Select...</option>{TIERS.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}</select></div>
+        <div style={{flex:"1 1 180px"}}><label style={LS}>Category</label><select value={sCat} onChange={e=>setSCat(e.target.value)} style={IS}><option value="">Select...</option>{PERK_CATEGORIES.map(c=><option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}</select></div>
+        <div style={{flex:"1 1 160px"}}><label style={LS}>When did you stay?</label><input type="month" value={sDate} onChange={e=>setSDate(e.target.value)} style={IS}/></div>
       </div>
-      <div style={{marginBottom:16}}><label style={LS}>Describe the perk</label><textarea value={sDesc} onChange={e=>setSDesc(e.target.value)} placeholder="e.g., Free lattes at the lobby café" style={{...IS,minHeight:80,resize:"vertical"}}/></div>
+      <div style={{marginBottom:16}}><label style={LS}>Describe the perk</label><textarea value={sDesc} onChange={e=>setSDesc(e.target.value)} placeholder="e.g., Free lattes at the lobby café — just show your room key" style={{...IS,minHeight:80,resize:"vertical"}}/></div>
       <div style={{display:"flex",gap:8}}>
         <button onClick={submitPerk} disabled={submitting} style={{ background:"#000",color:"#fff",border:"none",borderRadius:8,padding:"11px 28px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif",opacity:submitting?0.5:1 }}>Submit</button>
         <button onClick={()=>setShowForm(false)} style={{ background:"transparent",color:"#999",border:"1px solid #ddd",borderRadius:8,padding:"11px 28px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif" }}>Cancel</button>
@@ -184,7 +264,7 @@ function HotelDetail({ hotel, user, onBack, onNeedAuth }) {
     : tab==="perks" ? <div>{TIERS.map(t=><TierSection key={t.key} tier={t.key} perks={byTier[t.key]} user={user} onUpvote={upvote}/>)}</div>
     : <div style={{ background:"#fff",borderRadius:12,padding:"8px 24px 24px",border:"1px solid #e8e8e8" }}>
         <div style={{ fontSize:14,fontWeight:700,color:"#000",fontFamily:"'Inter',sans-serif",padding:"18px 0 10px",borderBottom:"1px solid #f0f0f0",marginBottom:4 }}>Guest Tips</div>
-        {comments.map((c,i)=><Comment key={c.id||i} comment={c}/>)}
+        {comments.map((c,i)=><Cmt key={c.id||i} comment={c}/>)}
         {!comments.length && <div style={{padding:24,textAlign:"center",color:"#ccc",fontFamily:"'Inter',sans-serif",fontSize:13}}>No tips yet.</div>}
         <div style={{marginTop:20,padding:20,background:"#fafafa",borderRadius:10,border:"1px solid #eee"}}>
           <div style={{fontSize:13,fontWeight:600,color:"#333",fontFamily:"'Inter',sans-serif",marginBottom:12}}>Share a tip</div>
@@ -247,12 +327,14 @@ function AddHotelModal({ onClose, user, onNeedAuth, onAdded, existingHotels }) {
   </div>;
 }
 
+/* ─── Main App ─── */
 export default function App() {
   const [user, setUser] = useState(null);
   const [hotels, setHotels] = useState([]); const [perkCounts, setPerkCounts] = useState({});
   const [search, setSearch] = useState(""); const [brandFilter, setBrandFilter] = useState("");
   const [selected, setSelected] = useState(null);
   const [showAuth, setShowAuth] = useState(false); const [showAdd, setShowAdd] = useState(false);
+  const [page, setPage] = useState("home"); // "home" | "leaderboard"
   const [loading, setLoading] = useState(true);
 
   const loadHotels = async () => {
@@ -285,11 +367,12 @@ export default function App() {
     <div style={{ background:"#000", padding:"0 0 56px", position:"relative" }}>
       <div style={{ maxWidth:920, margin:"0 auto", padding:"20px 24px 0" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:48, flexWrap:"wrap", gap:10 }}>
-          <div onClick={()=>setSelected(null)} style={{ cursor:"pointer", display:"flex", alignItems:"baseline", gap:0 }}>
+          <div onClick={()=>{setSelected(null);setPage("home");}} style={{ cursor:"pointer", display:"flex", alignItems:"baseline" }}>
             <span style={{ fontSize:22, fontWeight:900, color:"#fff", fontFamily:"'Inter',sans-serif", letterSpacing:-0.5 }}>Perk</span>
             <span style={{ fontSize:22, fontWeight:900, color:"#555", fontFamily:"'Inter',sans-serif", letterSpacing:-0.5 }}>Snob</span>
           </div>
           <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+            <button onClick={()=>{setSelected(null);setPage("leaderboard");}} style={{ background:"transparent",color:"rgba(255,255,255,0.5)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif" }}>🏆 Leaderboard</button>
             {user ? <>
               <span style={{fontSize:12,color:"rgba(255,255,255,0.4)",fontFamily:"'Inter',sans-serif"}}>{user.user_metadata?.display_name||user.email?.split("@")[0]}</span>
               <button onClick={async()=>{await supabase.auth.signOut();setUser(null);}} style={{background:"transparent",color:"rgba(255,255,255,0.5)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>Sign Out</button>
@@ -297,7 +380,7 @@ export default function App() {
             <button onClick={()=>user?setShowAdd(true):setShowAuth(true)} style={{background:"#fff",color:"#000",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"'Inter',sans-serif"}}>+ Add Hotel</button>
           </div>
         </div>
-        {!selected && <>
+        {!selected && page==="home" && <>
           <h1 style={{ fontSize:46, fontWeight:900, color:"#fff", fontFamily:"'Inter',sans-serif", margin:"0 0 12px", lineHeight:1.05, maxWidth:500, letterSpacing:-2 }}>
             Elite hotel perks,<br/>crowdsourced.
           </h1>
@@ -305,8 +388,8 @@ export default function App() {
             Real Marriott Bonvoy elite benefits reported by real guests. Know what you're getting before you book.
           </p>
           <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-            <input type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search hotels or destinations..." style={{ flex:"1 1 300px",padding:"14px 36px 14px 18px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Inter',sans-serif",outline:"none",boxSizing:"border-box" }}/>
-            <select value={brandFilter} onChange={e=>setBrandFilter(e.target.value)} style={{ padding:"14px 18px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:13,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer",minWidth:160 }}>
+            <input type="text" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search hotels or destinations..." style={{ flex:"1 1 300px",padding:"14px 18px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:14,fontFamily:"'Inter',sans-serif",outline:"none",boxSizing:"border-box" }}/>
+            <select value={brandFilter} onChange={e=>setBrandFilter(e.target.value)} style={{ padding:"14px 36px 14px 18px",borderRadius:10,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.05)",color:"#fff",fontSize:13,fontFamily:"'Inter',sans-serif",outline:"none",cursor:"pointer",minWidth:160 }}>
               <option value="" style={{color:"#000"}}>All Brands</option>
               {usedBrands.map(b=><option key={b} value={b} style={{color:"#000"}}>{b}</option>)}
             </select>
@@ -316,7 +399,8 @@ export default function App() {
     </div>
 
     <div style={{ maxWidth:920, margin:"-28px auto 0", padding:"0 24px 60px", position:"relative" }}>
-      {selected ? <HotelDetail hotel={selected} user={user} onBack={()=>setSelected(null)} onNeedAuth={()=>setShowAuth(true)}/> :
+      {page === "leaderboard" ? <Leaderboard onClose={()=>setPage("home")}/> :
+      selected ? <HotelDetail hotel={selected} user={user} onBack={()=>setSelected(null)} onNeedAuth={()=>setShowAuth(true)}/> :
       loading ? <div style={{textAlign:"center",padding:60,color:"#ccc",fontFamily:"'Inter',sans-serif"}}>Loading...</div> : <>
         <div style={{marginBottom:16}}><span style={{fontSize:12,color:"#bbb",fontFamily:"'Inter',sans-serif"}}>{filtered.length} propert{filtered.length!==1?"ies":"y"}</span></div>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))", gap:12 }}>
