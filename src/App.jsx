@@ -140,7 +140,7 @@ return<div style={{padding:"16px 20px",borderRadius:8,background:"#fff",border:"
 
 function Footer(){return<footer style={{background:"#0f172a",borderTop:"1px solid #1e293b",padding:"40px 28px",marginTop:40}}><div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:24}}>
 <div><div style={{display:"flex",alignItems:"baseline",gap:1,marginBottom:8}}><span style={{fontSize:20,fontWeight:700,color:"#fff",fontFamily:FD}}>Perk</span><span style={{fontSize:20,fontWeight:700,color:"#94a3b8",fontFamily:FD}}>Snob</span></div>
-<p style={{fontSize:12,color:"#64748b",fontFamily:FF,maxWidth:280,lineHeight:1.6}}>Real Marriott Bonvoy elite benefits reported by real guests. Community-powered hotel intelligence.</p></div>
+<p style={{fontSize:12,color:"#64748b",fontFamily:FF,maxWidth:280,lineHeight:1.6}}>Real Marriott Bonvoy elite benefits reported by real guests. Powered by the community!</p></div>
 <div style={{display:"flex",gap:32}}>
 <div><div style={{fontSize:10,fontWeight:700,color:"#94a3b8",fontFamily:FF,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Navigate</div>
 {[{l:"Home",p:"/"},{l:"Map",p:"/map"},{l:"Search Perks",p:"/search"},{l:"Compare",p:"/compare"},{l:"Leaderboard",p:"/leaderboard"}].map(x=><a key={x.p} href={x.p} onClick={e=>{e.preventDefault();window.history.pushState({},"",x.p);window.dispatchEvent(new PopStateEvent("popstate"))}} style={{display:"block",fontSize:13,color:"#64748b",fontFamily:FF,textDecoration:"none",marginBottom:6,transition:"color 0.15s"}} onMouseEnter={e=>e.target.style.color="#fff"} onMouseLeave={e=>e.target.style.color="#64748b"}>{x.l}</a>)}</div>
