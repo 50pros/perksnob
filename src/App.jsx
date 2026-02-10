@@ -3,7 +3,7 @@ import { supabase } from "./supabaseClient";
 const TIERS=[{key:"ambassador",label:"Ambassador Elite",color:"#1a1a1a"},{key:"titanium",label:"Titanium Elite",color:"#6b7280"},{key:"platinum",label:"Platinum Elite",color:"#9ca3af"}];
 const CATS=[{key:"breakfast",icon:"🍳",label:"Breakfast"},{key:"lounge",icon:"🍸",label:"Lounge Access"},{key:"drinks",icon:"☕",label:"Drinks & Coffee"},{key:"upgrade",icon:"⬆️",label:"Room Upgrades"},{key:"gift",icon:"🎁",label:"Welcome Gift"},{key:"late_checkout",icon:"🕐",label:"Late Checkout"},{key:"spa",icon:"💆",label:"Spa & Wellness"},{key:"parking",icon:"🅿️",label:"Parking"},{key:"fnb_credit",icon:"💳",label:"F&B Credit"},{key:"housekeeping",icon:"🧹",label:"Housekeeping"},{key:"bathroom",icon:"🚿",label:"Bathroom"},{key:"other",icon:"✨",label:"Other"}];
 const BRANDS=["The Ritz-Carlton","St. Regis","W Hotels","EDITION","The Luxury Collection","JW Marriott"];
-const BOOKING_TYPES=["Direct (Marriott Bonvoy)","Points","Amex FHR","Virtuoso","STARS","Corporate","Employee (MMF, MMP, etc.)","3rd Party (e.g. Priceline)","Other"];
+const BOOKING_TYPES=["Direct (Marriott Bonvoy)","Points","Amex FHR","Virtuoso","STARS","Corporate","Employee (MMF, MMP, etc.)","Credit Card (e.g. AmEx Travel)","3rd Party (e.g. Priceline)","Other"];
 const UPGRADE_TYPES=["Same category, better room","Higher category","Suite upgrade"];
 const CATEGORY_FIELDS={
 breakfast:[
