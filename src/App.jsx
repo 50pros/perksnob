@@ -113,30 +113,33 @@ const tags=fields.map(f=>{const v=details[f.key];if(!v)return null;if(f.type==="
 if(!tags.length)return null;
 return<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>{tags.map((t,i)=><span key={i} style={{...TAG("#f0f9ff","#0369a1"),fontSize:9,gap:3}}><span style={{opacity:0.7}}>{t.label}:</span> {t.value}</span>)}</div>}
 
-function PerkCard({perk,user,onUp,onDown,onEdit,onDelete,showHotel}){const cat=gc(perk.category),conf=cv(perk.total_confirmations),stay=fsd(perk.latest_stay);const[sd,ssd]=useState(false);
+function PerkCard({perk,user,onVote,onEdit,onDelete,showHotel}){const cat=gc(perk.category),stay=fsd(perk.latest_stay);
 const isOwner=user&&perk.user_id===user.id;const hasPromo=perk.promo_code||perk.booking_type==="Employee (MMF, MMP, etc.)"||perk.booking_type==="Employee (MMP)"||perk.booking_type==="Corporate"||perk.booking_type==="3rd Party (e.g. Priceline)";
-return<div style={{display:"flex",gap:14,padding:"14px 0",borderBottom:"1px solid #f1f5f9"}}><div style={{width:38,height:38,borderRadius:8,background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0,border:"1px solid #e2e8f0"}} role="img" aria-label={cat.label}>{cat.icon}</div>
+const score=(perk.upvotes||0)-(perk.downvotes||0);const myVote=perk.my_vote||0;
+return<div style={{display:"flex",gap:14,padding:"14px 0",borderBottom:"1px solid #f1f5f9"}}>
+<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:36}}>
+{user?<button onClick={()=>onVote(perk,myVote===1?0:1)} aria-label="Upvote" style={{background:"none",border:"none",cursor:"pointer",fontSize:16,padding:0,color:myVote===1?"#059669":"#cbd5e1",transition:"color 0.15s"}}>▲</button>:<span style={{fontSize:16,color:"#cbd5e1"}}>▲</span>}
+<span style={{fontSize:13,fontWeight:700,color:score>0?"#059669":score<0?"#dc2626":"#94a3b8",fontFamily:FF}}>{score}</span>
+{user?<button onClick={()=>onVote(perk,myVote===-1?0:-1)} aria-label="Downvote" style={{background:"none",border:"none",cursor:"pointer",fontSize:16,padding:0,color:myVote===-1?"#dc2626":"#cbd5e1",transition:"color 0.15s"}}>▼</button>:<span style={{fontSize:16,color:"#cbd5e1"}}>▼</span>}
+</div>
 <div style={{flex:1,minWidth:0}}>{showHotel&&<div style={{fontSize:11,fontWeight:700,color:"#0f172a",fontFamily:FF,marginBottom:3}}>{perk.hotel_name}</div>}
 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3,flexWrap:"wrap"}}><span style={{fontSize:11,fontWeight:700,color:"#334155",fontFamily:FF,textTransform:"uppercase",letterSpacing:0.8}}>{cat.label}</span>
 <span style={{...TAG("#f1f5f9",gt(perk.elite_tier).color)}}>{gt(perk.elite_tier).label}</span>
 {perk.upgrade_type&&<span style={{...TAG("#eff6ff","#1d4ed8")}}>{perk.upgrade_type}</span>}
 {perk.booking_type&&<span style={{...TAG("#f0fdf4","#15803d")}}>{perk.booking_type}</span>}
 {hasPromo&&<span style={{...TAG("#fefce8","#a16207"),cursor:"help"}} title="Booked with a promo/corporate/employee code — perks received may differ from standard elite bookings">⚠️ {perk.promo_code||"Promo/Corp rate"}</span>}
-{stay&&<span style={{fontSize:9,color:"#94a3b8",fontFamily:FF,background:"#f8fafc",padding:"2px 6px",borderRadius:3}}>Stay: {stay}</span>}</div>
+{stay&&<span style={{fontSize:9,color:"#94a3b8",fontFamily:FF,background:"#f8fafc",padding:"2px 6px",borderRadius:3}}>Stay: {stay}</span>}
+<span style={{fontSize:9,color:"#94a3b8",fontFamily:FF}}>{perk.display_name}</span></div>
 <div style={{fontSize:13,color:"#475569",lineHeight:1.6,fontFamily:FF}}>{perk.summary||perk.description}</div>
 <CategoryDetailTags category={perk.category} details={perk.category_details}/>
-<div style={{marginTop:6,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-<span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:10,fontFamily:FF,color:cc(conf),background:"#f8fafc",padding:"3px 8px",borderRadius:12,fontWeight:600,border:"1px solid #f1f5f9"}}><span style={{width:4,height:4,borderRadius:"50%",background:cc(conf)}}/>{perk.total_confirmations} report{perk.total_confirmations!==1?"s":""} · {cl(conf)}</span>
-{user&&<><button onClick={()=>onUp(perk)} aria-label="Confirm perk" style={{background:"none",border:"1px solid #e2e8f0",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",color:"#64748b",fontFamily:FF,fontWeight:600}}>Confirm</button>
-<button onClick={()=>ssd(!sd)} aria-label="Dispute perk" style={{background:"none",border:"1px solid #e2e8f0",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",color:"#94a3b8",fontFamily:FF}}>Dispute</button></>}
-{isOwner&&onEdit&&<button onClick={()=>onEdit(perk)} aria-label="Edit perk" style={{background:"none",border:"1px solid #dbeafe",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",color:"#2563eb",fontFamily:FF,fontWeight:600}}>Edit</button>}
-{isOwner&&onDelete&&<button onClick={()=>{if(window.confirm("Delete this perk report?"))onDelete(perk)}} aria-label="Delete perk" style={{background:"none",border:"1px solid #fecaca",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",color:"#dc2626",fontFamily:FF}}>Delete</button>}
-</div>
-{sd&&user&&<div style={{marginTop:6,display:"flex",gap:4,flexWrap:"wrap"}}>{[{k:"outdated",l:"Outdated"},{k:"inaccurate",l:"Inaccurate"},{k:"not_my_experience",l:"Not my experience"}].map(r=><button key={r.k} onClick={()=>{onDown(perk,r.k);ssd(false)}} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:4,padding:"3px 8px",fontSize:10,cursor:"pointer",color:"#dc2626",fontFamily:FF,fontWeight:600}}>{r.l}</button>)}</div>}
+{isOwner&&<div style={{marginTop:6,display:"flex",gap:6}}>
+{onEdit&&<button onClick={()=>onEdit(perk)} aria-label="Edit perk" style={{background:"none",border:"1px solid #dbeafe",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",color:"#2563eb",fontFamily:FF,fontWeight:600}}>Edit</button>}
+{onDelete&&<button onClick={()=>{if(window.confirm("Delete this perk report?"))onDelete(perk)}} aria-label="Delete perk" style={{background:"none",border:"1px solid #fecaca",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",color:"#dc2626",fontFamily:FF}}>Delete</button>}
+</div>}
 </div></div>}
 
-function TierSection({tier,perks,user,onUp,onDown,onEdit,onDelete}){const t=gt(tier);if(!perks?.length)return<div style={{padding:20,borderRadius:8,background:"#fafbfc",border:"1px solid #f1f5f9",marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><span style={{width:6,height:6,borderRadius:"50%",background:t.color}}/><span style={{fontSize:12,fontWeight:700,color:t.color,fontFamily:FF}}>{t.label}</span></div><div style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>No perks reported yet. Be the first to share what you received!</div></div>;
-return<div style={{padding:"16px 20px",borderRadius:8,background:"#fff",border:"1px solid #e2e8f0",marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><span style={{width:6,height:6,borderRadius:"50%",background:t.color}}/><span style={{fontSize:13,fontWeight:700,color:t.color,fontFamily:FF}}>{t.label}</span><span style={{fontSize:10,color:"#94a3b8",fontFamily:FF,marginLeft:"auto"}}>{perks.length} perk{perks.length!==1?"s":""}</span></div>{perks.map((p,i)=><PerkCard key={p.id||i} perk={p} user={user} onUp={onUp} onDown={onDown} onEdit={onEdit} onDelete={onDelete}/>)}</div>}
+function TierSection({tier,perks,user,onVote,onEdit,onDelete}){const t=gt(tier);if(!perks?.length)return<div style={{padding:20,borderRadius:8,background:"#fafbfc",border:"1px solid #f1f5f9",marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><span style={{width:6,height:6,borderRadius:"50%",background:t.color}}/><span style={{fontSize:12,fontWeight:700,color:t.color,fontFamily:FF}}>{t.label}</span></div><div style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>No perks reported yet. Be the first to share what you received!</div></div>;
+return<div style={{padding:"16px 20px",borderRadius:8,background:"#fff",border:"1px solid #e2e8f0",marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><span style={{width:6,height:6,borderRadius:"50%",background:t.color}}/><span style={{fontSize:13,fontWeight:700,color:t.color,fontFamily:FF}}>{t.label}</span><span style={{fontSize:10,color:"#94a3b8",fontFamily:FF,marginLeft:"auto"}}>{perks.length} perk{perks.length!==1?"s":""}</span></div>{perks.map((p,i)=><PerkCard key={p.id||i} perk={p} user={user} onVote={onVote} onEdit={onEdit} onDelete={onDelete}/>)}</div>}
 
 function Footer(){return<footer style={{background:"#0f172a",borderTop:"1px solid #1e293b",padding:"40px 28px",marginTop:40}}><div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:24}}>
 <div><div style={{display:"flex",alignItems:"baseline",gap:1,marginBottom:8}}><span style={{fontSize:20,fontWeight:700,color:"#fff",fontFamily:FD}}>Perk</span><span style={{fontSize:20,fontWeight:700,color:"#94a3b8",fontFamily:FD}}>Snob</span></div>
@@ -226,14 +229,14 @@ const BADGES=[
 {key:"power",icon:"⭐",label:"Power Contributor",desc:"25+ perk reports",test:s=>s.reports>=25},
 {key:"elite_rev",icon:"👑",label:"Elite Reviewer",desc:"50+ perk reports",test:s=>s.reports>=50},
 {key:"globe",icon:"🌍",label:"Globe Trotter",desc:"Reports at 10+ different hotels",test:s=>s.hotels>=10},
-{key:"trusted",icon:"✅",label:"Trusted Voice",desc:"10+ confirmations received",test:s=>s.confirmations>=10},
+{key:"trusted",icon:"✅",label:"Trusted Voice",desc:"10+ upvotes received",test:s=>s.upvotes>=10},
 {key:"detail",icon:"📝",label:"Detail King",desc:"10+ reports with all details filled",test:s=>s.detailed>=10},
 ];
 function getBadges(stats){return BADGES.filter(b=>b.test(stats))}
 function topBadge(stats){const b=getBadges(stats);return b.length?b[b.length-1]:null}
 
 function UserProfile({userId,currentUser,onBack,hotels}){
-const[profile,setProfile]=useState(null),[stats,setStats]=useState({reports:0,hotels:0,confirmations:0,detailed:0}),[perks,setPerks]=useState([]),[editing,setEditing]=useState(false),[ld,sld]=useState(true);
+const[profile,setProfile]=useState(null),[stats,setStats]=useState({reports:0,hotels:0,upvotes:0,detailed:0}),[perks,setPerks]=useState([]),[editing,setEditing]=useState(false),[ld,sld]=useState(true);
 const[bio,setBio]=useState(""),[tier,setTier]=useState(""),[since,setSince]=useState(""),[reddit,setReddit]=useState("");
 const isOwn=currentUser&&currentUser.id===userId;
 useEffect(()=>{(async()=>{sld(true);
@@ -244,8 +247,9 @@ const{data:rp}=await supabase.from("perk_reports").select("*").eq("user_id",user
 const myPerks=rp||[];setPerks(myPerks);
 const hotelSet=new Set(myPerks.map(r=>r.hotel_id));
 const detailed=myPerks.filter(r=>r.category_details&&Object.keys(r.category_details).length>=2).length;
-const{count:confCount}=await supabase.from("perk_reports").select("*",{count:"exact",head:true}).eq("user_id",userId);
-setStats({reports:myPerks.length,hotels:hotelSet.size,confirmations:confCount||0,detailed});
+const perkIds=myPerks.map(p=>p.id);
+let upvoteCount=0;if(perkIds.length){const{count}=await supabase.from("perk_votes").select("*",{count:"exact",head:true}).in("perk_id",perkIds).eq("vote",1);upvoteCount=count||0}
+setStats({reports:myPerks.length,hotels:hotelSet.size,upvotes:upvoteCount,detailed});
 sld(false)})()},[userId]);
 const save=async()=>{const{error}=await supabase.from("user_profiles").upsert({id:userId,display_name:profile?.display_name,bio:bio.trim()||null,elite_tier:tier||null,elite_since:since||null,reddit_username:reddit.trim()||null});
 if(error){showToast("Error saving: "+error.message,"error");return}setProfile({...profile,bio:bio.trim(),elite_tier:tier,elite_since:since,reddit_username:reddit.trim()});setEditing(false);showToast("Profile saved!")};
@@ -274,7 +278,7 @@ return<div><button onClick={onBack} style={{background:"#fff",border:"1px solid 
 <div style={{marginBottom:14}}><label style={LS}>Bio <CharCount val={bio} max={200}/></label><textarea value={bio} onChange={e=>setBio(e.target.value.slice(0,200))} placeholder="Tell others about your travel style..." style={{...IS,minHeight:60,resize:"vertical"}} maxLength={200}/></div>
 <div style={{display:"flex",gap:8}}><button onClick={save} style={BT()}>Save Profile</button><button onClick={()=>setEditing(false)} style={BT("#e2e8f0","#64748b")}>Cancel</button></div></div>}
 <div style={{display:"flex",gap:16,marginBottom:24,flexWrap:"wrap"}}>
-{[{label:"Reports",value:stats.reports,icon:"📊"},{label:"Hotels Reviewed",value:stats.hotels,icon:"🏨"},{label:"Badges Earned",value:badges.length,icon:"🏅"}].map(s=><div key={s.label} style={{flex:"1 1 140px",background:"#fff",borderRadius:10,padding:20,border:"1px solid #e2e8f0",textAlign:"center"}}>
+{[{label:"Reports",value:stats.reports,icon:"📊"},{label:"Hotels Reviewed",value:stats.hotels,icon:"🏨"},{label:"Upvotes Received",value:stats.upvotes,icon:"▲"},{label:"Badges Earned",value:badges.length,icon:"🏅"}].map(s=><div key={s.label} style={{flex:"1 1 140px",background:"#fff",borderRadius:10,padding:20,border:"1px solid #e2e8f0",textAlign:"center"}}>
 <div style={{fontSize:24,marginBottom:4}}>{s.icon}</div>
 <div style={{fontSize:28,fontWeight:700,color:"#0f172a",fontFamily:FD}}>{s.value}</div>
 <div style={{fontSize:11,color:"#94a3b8",fontFamily:FF,textTransform:"uppercase",letterSpacing:1}}>{s.label}</div></div>)}</div>
@@ -307,8 +311,11 @@ const[cT,scT]=useState(""),[cX,scX]=useState("");
 const[editId,setEditId]=useState(null);const lastSub=useRef(0);
 useTitle(`${hotel.name} — Elite Perk Benefits | PerkSnob`);
 const load=useCallback(async()=>{sl(true);ser("");try{const{data:pd,error:e1}=await supabase.from("perk_reports").select("*").eq("hotel_id",hotel.id).order("created_at",{ascending:false});if(e1)throw e1;
-const pm={};(pd||[]).forEach(p=>{const k=`${p.elite_tier}|${p.category}|${p.description}`;if(!pm[k]){pm[k]={...p,total_confirmations:1,summary:p.description,latest_stay:p.stay_date,original_user_id:p.user_id,original_created:p.created_at}}else{pm[k].total_confirmations+=1;if(p.stay_date&&(!pm[k].latest_stay||p.stay_date>pm[k].latest_stay))pm[k].latest_stay=p.stay_date;if(p.created_at<pm[k].original_created){pm[k].user_id=p.user_id;pm[k].id=p.id;pm[k].display_name=p.display_name;pm[k].original_created=p.created_at;pm[k].category_details=p.category_details||pm[k].category_details}}});sp(Object.values(pm));
-const{data:cd}=await supabase.from("comments").select("*").eq("hotel_id",hotel.id).order("created_at",{ascending:false});sc(cd||[])}catch(e){ser("Failed to load hotel data. Please try again.");console.error(e)}sl(false)},[hotel.id]);useEffect(()=>{load()},[load]);
+const{data:votes}=await supabase.from("perk_votes").select("*").in("perk_id",(pd||[]).map(p=>p.id));
+const voteMap={};(votes||[]).forEach(v=>{if(!voteMap[v.perk_id])voteMap[v.perk_id]={up:0,down:0,my:0};if(v.vote===1)voteMap[v.perk_id].up++;else voteMap[v.perk_id].down++;if(user&&v.user_id===user.id)voteMap[v.perk_id].my=v.vote});
+const perksWithVotes=(pd||[]).map(p=>({...p,upvotes:voteMap[p.id]?.up||0,downvotes:voteMap[p.id]?.down||0,my_vote:voteMap[p.id]?.my||0}));
+sp(perksWithVotes);
+const{data:cd}=await supabase.from("comments").select("*").eq("hotel_id",hotel.id).order("created_at",{ascending:false});sc(cd||[])}catch(e){ser("Failed to load hotel data. Please try again.");console.error(e)}sl(false)},[hotel.id,user]);useEffect(()=>{load()},[load]);
 const resetForm=()=>{ssT("");ssDate("");ssBT("");ssPC("");setEntries([emptyEntry()]);setEditId(null);ssf(false)};
 const subPerk=async()=>{if(!user){onNeedAuth();return}
 const valid=entries.filter(e=>e.category&&e.description.trim());
@@ -327,8 +334,10 @@ resetForm();sSub(false);load()};
 const startEdit=p=>{setEditId(p.id);ssT(p.elite_tier);setEntries([{category:p.category,description:p.description,upgrade_type:p.upgrade_type||"",category_details:p.category_details||{}}]);ssDate(p.stay_date?p.stay_date.slice(0,7):"");ssBT(p.booking_type||"");ssPC(p.promo_code||"");ssf(true);window.scrollTo({top:0,behavior:"smooth"})};
 const deletePerk=async p=>{const{error}=await supabase.from("perk_reports").delete().eq("id",p.id);if(error){showToast("Error deleting: "+error.message,"error");return}showToast("Perk deleted.");load()};
 const subCmt=async()=>{if(!user){onNeedAuth();return}if(!cT||!cX.trim())return;if(cX.trim().length>MAX_TIP){showToast(`Tip must be ${MAX_TIP} characters or less`,"error");return}const{error}=await supabase.from("comments").insert({hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:cT,text:cX.trim()});if(error){showToast("Error: "+error.message,"error");return}scT("");scX("");showToast("Tip posted!");load()};
-const up=async p=>{if(!user){onNeedAuth();return}await supabase.from("perk_reports").insert({hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:p.elite_tier,category:p.category,description:p.description,booking_type:p.booking_type,promo_code:p.promo_code,upgrade_type:p.upgrade_type,category_details:p.category_details});showToast("Confirmation added!");load()};
-const down=async(p,reason)=>{if(!user){onNeedAuth();return}await supabase.from("downvotes").insert({perk_report_id:p.id,user_id:user.id,reason}).catch(()=>{});showToast("Dispute recorded.");load()};
+const vote=async(p,val)=>{if(!user){onNeedAuth();return}
+if(val===0){await supabase.from("perk_votes").delete().eq("perk_id",p.id).eq("user_id",user.id);showToast("Vote removed.")}
+else{await supabase.from("perk_votes").upsert({perk_id:p.id,user_id:user.id,vote:val},{onConflict:"perk_id,user_id"});showToast(val===1?"Upvoted!":"Downvoted.")}
+load()};
 const byTier={};const tierUp={ambassador:["ambassador","titanium","platinum"],titanium:["titanium","platinum"],platinum:["platinum"]};TIERS.forEach(t=>{const show=tierUp[t.key]||[t.key];byTier[t.key]=perks.filter(p=>show.includes(p.elite_tier))});const tr=perks.reduce((a,p)=>a+p.total_confirmations,0),catC=new Set(perks.map(p=>p.category)).size,score=pscore(tr,catC);
 if(err)return<div style={{textAlign:"center",padding:60}}><p style={{color:"#dc2626",fontFamily:FF,marginBottom:12}}>{err}</p><button onClick={load} style={BT()}>Retry</button><button onClick={onBack} style={{...BT("#e2e8f0","#64748b"),marginLeft:8}}>← Back</button></div>;
 return<div><button onClick={onBack} style={{background:"#fff",border:"1px solid #e2e8f0",cursor:"pointer",fontSize:13,color:"#334155",fontWeight:600,fontFamily:FF,padding:"8px 16px",marginBottom:24,borderRadius:6}}>← Back</button>
@@ -362,7 +371,7 @@ return<div><button onClick={onBack} style={{background:"#fff",border:"1px solid 
 <div className="ps-detail-layout" style={{display:"flex",gap:24,alignItems:"flex-start"}}>
 <div style={{flex:"1 1 0",minWidth:0}}>
 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16,padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}><span style={{fontSize:14,flexShrink:0}}>ℹ️</span><span style={{fontSize:12,color:"#64748b",fontFamily:FF,lineHeight:1.5}}>Perks cascade upward by tier. For example, Platinum perks also appear under Titanium and Ambassador, since higher tiers receive all lower-tier benefits.</span></div>
-{TIERS.map(t=><TierSection key={t.key} tier={t.key} perks={byTier[t.key]} user={user} onUp={up} onDown={down} onEdit={startEdit} onDelete={deletePerk}/>)}
+{TIERS.map(t=><TierSection key={t.key} tier={t.key} perks={byTier[t.key]} user={user} onVote={vote} onEdit={startEdit} onDelete={deletePerk}/>)}
 </div>
 <div className="ps-tips-sidebar" style={{flex:"0 0 300px",position:"sticky",top:20}}>
 <div style={{background:"#fff",borderRadius:10,padding:"0 20px 20px",border:"1px solid #e2e8f0"}}>
