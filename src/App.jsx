@@ -7,35 +7,56 @@ const BOOKING_TYPES=["Direct","Points","Amex FHR","Virtuoso","STARS","Corporate"
 const UPGRADE_TYPES=["Same category, better room","Higher category","Suite upgrade"];
 const CATEGORY_FIELDS={
 breakfast:[
-{key:"format",label:"Format",type:"select",options:["Buffet","À la carte","Both","Credit only"]},
+{key:"cost",label:"Cost",type:"select",options:["Complimentary","Voucher/Credit","Discounted","Not included"]},
+{key:"credit_amount",label:"Amount",type:"text",placeholder:"e.g. $50/person",showIf:d=>d.cost==="Voucher/Credit"||d.cost==="Discounted"},
+{key:"style",label:"Style",type:"select",options:["Full breakfast","Continental","Both options"]},
+{key:"format",label:"Format",type:"select",options:["Buffet","À la carte","Both"]},
 {key:"quality",label:"Quality",type:"rating",max:5},
-{key:"hot_food",label:"Hot food included?",type:"select",options:["Yes","No"]}],
+{key:"hot_food",label:"Hot food?",type:"select",options:["Yes","No"]},
+{key:"location",label:"Where?",type:"text",placeholder:"e.g. Main restaurant, club lounge"}],
 lounge:[
-{key:"status",label:"Status",type:"select",options:["Open","Closed","Renovating"]},
-{key:"food_type",label:"Food served?",type:"select",options:["Full meals","Snacks only","Drinks only"]},
-{key:"evening_apps",label:"Evening appetizers?",type:"select",options:["Yes","No"]}],
+{key:"status",label:"Status",type:"select",options:["Open","Closed","Renovating","No lounge"]},
+{key:"hours",label:"Hours",type:"text",placeholder:"e.g. 6am–10pm"},
+{key:"food_type",label:"Food",type:"select",options:["Full meals","Snacks & appetizers","Drinks only","No food"]},
+{key:"evening_apps",label:"Evening appetizers?",type:"select",options:["Yes, hot food","Yes, light bites","No"]},
+{key:"alcohol",label:"Alcohol served?",type:"select",options:["Yes, full bar","Yes, beer & wine","No"]},
+{key:"quality",label:"Quality",type:"rating",max:5}],
 upgrade:[
-{key:"stay_length",label:"Length of stay",type:"select",options:["1–2 nights","3–4 nights","5+ nights"]},
-{key:"how_granted",label:"How was it granted?",type:"select",options:["Proactive (at check-in)","Upon request","Through app/SNNA","Not granted"]}],
+{key:"stay_length",label:"Stay length",type:"select",options:["1–2 nights","3–4 nights","5+ nights"]},
+{key:"how_granted",label:"How granted?",type:"select",options:["Proactive (at check-in)","Upon request","Through app/SNNA","Not granted"]},
+{key:"floors_up",label:"Floors upgraded",type:"select",options:["Same floor","1–3 floors up","4+ floors up","Top floor","N/A"]},
+{key:"room_offered",label:"Room type offered",type:"text",placeholder:"e.g. Ocean view suite, Club level king"}],
 gift:[
-{key:"gift_type",label:"Type",type:"select",options:["Food & beverage","Amenity (non-food)","Points","Letter only","Nothing"]}],
+{key:"gift_type",label:"Type",type:"select",options:["Food & beverage platter","Bottle of wine/champagne","Amenity (non-food)","Welcome letter + points","Resort credit","Nothing"]},
+{key:"gift_detail",label:"Specific item",type:"text",placeholder:"e.g. Chocolate truffles & fruit plate"}],
 late_checkout:[
-{key:"time_granted",label:"Time granted",type:"select",options:["1:00 PM","2:00 PM","3:00 PM","4:00 PM","No late checkout"]}],
+{key:"time_granted",label:"Time granted",type:"select",options:["1:00 PM","2:00 PM","3:00 PM","4:00 PM","No late checkout"]},
+{key:"how_lco",label:"How?",type:"select",options:["Proactive (offered at check-in)","Upon request","Via app","Denied"]}],
 spa:[
-{key:"spa_type",label:"What was offered?",type:"select",options:["Discount","Credit","Free treatment","Free access only","Nothing"]}],
+{key:"spa_type",label:"What was offered?",type:"select",options:["Free treatment","Credit/discount","Free facility access only","Discount on treatments","Nothing"]},
+{key:"spa_amount",label:"Amount",type:"text",placeholder:"e.g. $50 credit, 20% off",showIf:d=>d.spa_type==="Credit/discount"||d.spa_type==="Discount on treatments"},
+{key:"spa_detail",label:"Details",type:"text",placeholder:"e.g. Sauna, pool, gym access included"}],
 fnb_credit:[
-{key:"amount",label:"Amount per night",type:"text",placeholder:"e.g. $50"},
-{key:"where",label:"Where can it be used?",type:"select",options:["Restaurant","Bar","Room service","Any outlet"]}],
+{key:"amount",label:"Amount",type:"text",placeholder:"e.g. $50"},
+{key:"frequency",label:"Per",type:"select",options:["Per night","Per stay","Per person/night","One-time"]},
+{key:"where",label:"Where usable?",type:"select",options:["Any restaurant","Specific restaurant","Bar only","Room service","Any outlet"]},
+{key:"fnb_detail",label:"Restaurant name",type:"text",placeholder:"e.g. The Grill, Lobby Bar"}],
 parking:[
-{key:"included",label:"Included free?",type:"select",options:["Yes, free","Discounted","No"]},
-{key:"parking_type",label:"Type",type:"select",options:["Self-park","Valet","Both"]}],
+{key:"included",label:"Included free?",type:"select",options:["Yes, free","Discounted","No, full price"]},
+{key:"parking_type",label:"Type",type:"select",options:["Self-park","Valet","Both available"]},
+{key:"daily_rate",label:"Daily rate",type:"text",placeholder:"e.g. $45/night",showIf:d=>d.included!=="Yes, free"}],
 housekeeping:[
-{key:"frequency",label:"Frequency",type:"select",options:["Daily","Every other day","On request only","Not offered"]}],
+{key:"frequency",label:"Frequency",type:"select",options:["Daily","Every other day","On request only","Not offered"]},
+{key:"turndown",label:"Turndown service?",type:"select",options:["Yes, daily","Yes, on request","No"]}],
 bathroom:[
-{key:"door_type",label:"Door type",type:"select",options:["Solid door","Frosted glass","Clear glass","Open concept","Sliding barn door"]},
-{key:"separate_toilet",label:"Separate toilet room?",type:"select",options:["Yes","No"]}],
+{key:"door_type",label:"Door type",type:"select",options:["Solid wood/standard","Frosted glass","Clear/see-through glass","Open concept (no door)","Sliding barn door","Pocket door"]},
+{key:"separate_toilet",label:"Separate toilet room?",type:"select",options:["Yes","No"]},
+{key:"bath_type",label:"Bath/Shower",type:"select",options:["Tub & separate shower","Tub/shower combo","Shower only","Soaking tub & shower","Rain shower"]},
+{key:"dual_vanity",label:"Dual vanity?",type:"select",options:["Yes","No"]}],
 drinks:[
-{key:"drink_type",label:"Type",type:"select",options:["In-room machine","Lobby café","Lounge only","Complimentary at restaurant","Minibar credit"]}],
+{key:"drink_type",label:"What's offered?",type:"select",options:["In-room coffee machine","Lobby café/bar","Lounge access","Complimentary at restaurant","Minibar credit","Welcome drinks"]},
+{key:"machine_type",label:"Machine",type:"text",placeholder:"e.g. Nespresso, Illy, Keurig",showIf:d=>d.drink_type==="In-room coffee machine"},
+{key:"drink_detail",label:"Details",type:"text",placeholder:"e.g. 2 free drinks at lobby bar per night"}],
 other:[]
 };
 const MAX_DESC=500,MAX_NAME=30,MAX_TIP=300;
@@ -77,12 +98,13 @@ function StarInput({value,onChange,max=5}){return<div style={{display:"flex",gap
 /* Dynamic category detail form fields */
 function CategoryDetailFields({category,details,onChange}){const fields=CATEGORY_FIELDS[category]||[];if(!fields.length)return null;
 const set=(k,v)=>onChange({...details,[k]:v});
+const visible=fields.filter(f=>!f.showIf||f.showIf(details));
 return<div style={{marginBottom:16,padding:16,background:"#fff",borderRadius:8,border:"1px solid #e2e8f0"}}><div style={{fontSize:11,fontWeight:700,color:"#64748b",fontFamily:FF,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Optional details <span style={{fontWeight:400,textTransform:"none",letterSpacing:0}}> — helps others know what to expect</span></div>
-<div style={{display:"flex",gap:12,flexWrap:"wrap"}}>{fields.map(f=><div key={f.key} style={{flex:f.type==="text"?"1 1 160px":"0 0 auto",minWidth:f.type==="select"?140:120}}>
+<div style={{display:"flex",gap:12,flexWrap:"wrap"}}>{visible.map(f=><div key={f.key} style={{flex:f.type==="text"?"1 1 160px":"0 0 auto",minWidth:f.type==="select"?140:120}}>
 <label style={{...LS,marginBottom:4}}>{f.label}</label>
 {f.type==="select"?<select value={details[f.key]||""} onChange={e=>set(f.key,e.target.value)} style={{...IS,fontSize:12,padding:"8px 10px"}}><option value="">—</option>{f.options.map(o=><option key={o} value={o}>{o}</option>)}</select>
 :f.type==="rating"?<StarInput value={details[f.key]||0} onChange={v=>set(f.key,v)} max={f.max||5}/>
-:<input value={details[f.key]||""} onChange={e=>set(f.key,e.target.value)} placeholder={f.placeholder||""} style={{...IS,fontSize:12,padding:"8px 10px"}} maxLength={30}/>}
+:<input value={details[f.key]||""} onChange={e=>set(f.key,e.target.value)} placeholder={f.placeholder||""} style={{...IS,fontSize:12,padding:"8px 10px"}} maxLength={50}/>}
 </div>)}</div></div>}
 
 /* Display category details as tags on perk cards */
@@ -213,23 +235,35 @@ return<div><button onClick={onClose} style={{background:"#fff",border:"1px solid
 {!ls.length&&<div style={{padding:40,textAlign:"center",color:"#94a3b8"}}>No contributions yet. Be the first!</div>}</div>}</div>}
 
 function HotelDetail({hotel,user,onBack,onNeedAuth}){const[sf,ssf]=useState(false),[perks,sp]=useState([]),[cmts,sc]=useState([]),[ld,sl]=useState(true),[err,ser]=useState("");
-const[sT,ssT]=useState(""),[sC,ssC]=useState(""),[sD,ssD]=useState(""),[sDate,ssDate]=useState(""),[sub,sSub]=useState(false);
-const[sBT,ssBT]=useState(""),[sPC,ssPC]=useState(""),[sUT,ssUT]=useState("");
-const[sCd,ssCd]=useState({});
+const[sT,ssT]=useState(""),[sDate,ssDate]=useState(""),[sub,sSub]=useState(false);
+const[sBT,ssBT]=useState(""),[sPC,ssPC]=useState("");
+const emptyEntry=()=>({category:"",description:"",upgrade_type:"",category_details:{}});
+const[entries,setEntries]=useState([emptyEntry()]);
+const updateEntry=(i,field,val)=>{const ne=[...entries];ne[i]={...ne[i],[field]:val};setEntries(ne)};
+const addEntry=()=>setEntries([...entries,emptyEntry()]);
+const removeEntry=i=>{if(entries.length<=1)return;setEntries(entries.filter((_,j)=>j!==i))};
 const[cT,scT]=useState(""),[cX,scX]=useState("");
 const[editId,setEditId]=useState(null);const lastSub=useRef(0);
 useTitle(`${hotel.name} — Elite Perk Benefits | PerkSnob`);
 const load=useCallback(async()=>{sl(true);ser("");try{const{data:pd,error:e1}=await supabase.from("perk_reports").select("*").eq("hotel_id",hotel.id).order("created_at",{ascending:false});if(e1)throw e1;
 const pm={};(pd||[]).forEach(p=>{const k=`${p.elite_tier}|${p.category}|${p.description}`;if(!pm[k])pm[k]={...p,total_confirmations:1,summary:p.description,latest_stay:p.stay_date};else{pm[k].total_confirmations+=1;if(p.stay_date&&(!pm[k].latest_stay||p.stay_date>pm[k].latest_stay))pm[k].latest_stay=p.stay_date}});sp(Object.values(pm));
 const{data:cd}=await supabase.from("comments").select("*").eq("hotel_id",hotel.id).order("created_at",{ascending:false});sc(cd||[])}catch(e){ser("Failed to load hotel data. Please try again.");console.error(e)}sl(false)},[hotel.id]);useEffect(()=>{load()},[load]);
-const resetForm=()=>{ssT("");ssC("");ssD("");ssDate("");ssBT("");ssPC("");ssUT("");ssCd({});setEditId(null);ssf(false)};
-const subPerk=async()=>{if(!user){onNeedAuth();return}if(!sT||!sC||!sD.trim())return;if(sD.trim().length>MAX_DESC){showToast(`Description must be ${MAX_DESC} characters or less`,"error");return}
+const resetForm=()=>{ssT("");ssDate("");ssBT("");ssPC("");setEntries([emptyEntry()]);setEditId(null);ssf(false)};
+const subPerk=async()=>{if(!user){onNeedAuth();return}
+const valid=entries.filter(e=>e.category&&e.description.trim());
+if(!sT){showToast("Please select your tier","error");return}
+if(!valid.length){showToast("Please add at least one category with a description","error");return}
+for(const e of valid){if(e.description.trim().length>MAX_DESC){showToast(`Description must be ${MAX_DESC} characters or less`,"error");return}}
 const now=Date.now();if(!editId&&now-lastSub.current<10000){showToast("Please wait a few seconds between submissions","error");return}
-sSub(true);const row={hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:sT,category:sC,description:sD.trim()};if(sDate)row.stay_date=sDate+"-01";if(sBT)row.booking_type=sBT;if(sPC.trim())row.promo_code=sPC.trim();if(sC==="upgrade"&&sUT)row.upgrade_type=sUT;
-const cdFiltered=Object.fromEntries(Object.entries(sCd).filter(([_,v])=>v!==undefined&&v!==""&&v!==0));if(Object.keys(cdFiltered).length)row.category_details=cdFiltered;
-if(editId){const{error}=await supabase.from("perk_reports").update(row).eq("id",editId);if(error){showToast("Error: "+error.message,"error");sSub(false);return}showToast("Perk updated!")}else{const{error}=await supabase.from("perk_reports").insert(row);if(error){showToast("Error: "+error.message,"error");sSub(false);return}lastSub.current=now;showToast("Perk submitted! Thanks for contributing.")}
+sSub(true);
+if(editId){const e=valid[0];const row={hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:sT,category:e.category,description:e.description.trim()};if(sDate)row.stay_date=sDate+"-01";if(sBT)row.booking_type=sBT;if(sPC.trim())row.promo_code=sPC.trim();if(e.category==="upgrade"&&e.upgrade_type)row.upgrade_type=e.upgrade_type;
+const cd=Object.fromEntries(Object.entries(e.category_details||{}).filter(([_,v])=>v!==undefined&&v!==""&&v!==0));if(Object.keys(cd).length)row.category_details=cd;
+const{error}=await supabase.from("perk_reports").update(row).eq("id",editId);if(error){showToast("Error: "+error.message,"error");sSub(false);return}showToast("Perk updated!")}
+else{const rows=valid.map(e=>{const row={hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:sT,category:e.category,description:e.description.trim()};if(sDate)row.stay_date=sDate+"-01";if(sBT)row.booking_type=sBT;if(sPC.trim())row.promo_code=sPC.trim();if(e.category==="upgrade"&&e.upgrade_type)row.upgrade_type=e.upgrade_type;
+const cd=Object.fromEntries(Object.entries(e.category_details||{}).filter(([_,v])=>v!==undefined&&v!==""&&v!==0));if(Object.keys(cd).length)row.category_details=cd;return row});
+const{error}=await supabase.from("perk_reports").insert(rows);if(error){showToast("Error: "+error.message,"error");sSub(false);return}lastSub.current=now;showToast(`${rows.length} perk${rows.length>1?"s":""} submitted! Thanks for contributing.`)}
 resetForm();sSub(false);load()};
-const startEdit=p=>{setEditId(p.id);ssT(p.elite_tier);ssC(p.category);ssD(p.description);ssDate(p.stay_date?p.stay_date.slice(0,7):"");ssBT(p.booking_type||"");ssPC(p.promo_code||"");ssUT(p.upgrade_type||"");ssCd(p.category_details||{});ssf(true);window.scrollTo({top:0,behavior:"smooth"})};
+const startEdit=p=>{setEditId(p.id);ssT(p.elite_tier);setEntries([{category:p.category,description:p.description,upgrade_type:p.upgrade_type||"",category_details:p.category_details||{}}]);ssDate(p.stay_date?p.stay_date.slice(0,7):"");ssBT(p.booking_type||"");ssPC(p.promo_code||"");ssf(true);window.scrollTo({top:0,behavior:"smooth"})};
 const deletePerk=async p=>{const{error}=await supabase.from("perk_reports").delete().eq("id",p.id);if(error){showToast("Error deleting: "+error.message,"error");return}showToast("Perk deleted.");load()};
 const subCmt=async()=>{if(!user){onNeedAuth();return}if(!cT||!cX.trim())return;if(cX.trim().length>MAX_TIP){showToast(`Tip must be ${MAX_TIP} characters or less`,"error");return}const{error}=await supabase.from("comments").insert({hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:cT,text:cX.trim()});if(error){showToast("Error: "+error.message,"error");return}scT("");scX("");showToast("Tip posted!");load()};
 const up=async p=>{if(!user){onNeedAuth();return}await supabase.from("perk_reports").insert({hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:p.elite_tier,category:p.category,description:p.description,booking_type:p.booking_type,promo_code:p.promo_code,upgrade_type:p.upgrade_type,category_details:p.category_details});showToast("Confirmation added!");load()};
@@ -245,17 +279,24 @@ return<div><button onClick={onBack} style={{background:"#fff",border:"1px solid 
 <span style={{fontSize:15,fontWeight:700,color:"#0f172a",fontFamily:FF}}>Perks Overview</span>
 <button onClick={()=>{if(!user){onNeedAuth();return}if(sf){resetForm()}else{ssf(true)}}} style={{marginLeft:"auto",background:"#fff",color:"#0f172a",border:"2px solid #0f172a",borderRadius:6,padding:"8px 20px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+ Add Perk</button></div>
 {sf&&<div style={{background:"#f8fafc",borderRadius:10,padding:28,border:"1px solid #e2e8f0",marginBottom:24}}>
-<h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:20}}>{editId?"Edit Perk":"Add a Perk"}</h3>
-<div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:16}}><div style={{flex:"1 1 160px"}}><label style={LS}>Tier</label><select value={sT} onChange={e=>ssT(e.target.value)} style={IS}><option value="">Select...</option>{TIERS.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}</select></div>
-<div style={{flex:"1 1 160px"}}><label style={LS}>Category</label><select value={sC} onChange={e=>{ssC(e.target.value);ssCd({})}} style={IS}><option value="">Select...</option>{CATS.map(c=><option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}</select></div>
-<div style={{flex:"1 1 140px"}}><label style={LS}>When did you stay?</label><input type="month" value={sDate} onChange={e=>ssDate(e.target.value)} style={IS}/></div></div>
-{sC==="upgrade"&&<div style={{marginBottom:16}}><label style={LS}>Upgrade Type</label><select value={sUT} onChange={e=>ssUT(e.target.value)} style={IS}><option value="">Select type...</option>{UPGRADE_TYPES.map(u=><option key={u} value={u}>{u}</option>)}</select></div>}
-{sC&&<CategoryDetailFields category={sC} details={sCd} onChange={ssCd}/>}
-<div style={{marginBottom:16}}><label style={LS}>Describe the perk <CharCount val={sD} max={MAX_DESC}/></label><textarea value={sD} onChange={e=>ssD(e.target.value.slice(0,MAX_DESC))} placeholder="e.g., Free lattes at the lobby café" style={{...IS,minHeight:80,resize:"vertical"}} maxLength={MAX_DESC}/></div>
-<div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:16}}><div style={{flex:"1 1 180px"}}><label style={LS}>Booking Type <span style={{fontWeight:400,textTransform:"none"}}>(optional)</span></label><select value={sBT} onChange={e=>ssBT(e.target.value)} style={IS}><option value="">Select...</option>{BOOKING_TYPES.map(b=><option key={b} value={b}>{b}</option>)}</select></div>
-<div style={{flex:"1 1 180px"}}><label style={LS}>Promo/Corporate Code <span style={{fontWeight:400,textTransform:"none"}}>(optional)</span></label><input value={sPC} onChange={e=>ssPC(e.target.value.slice(0,30))} placeholder="e.g. MMP, Corp code" style={IS} maxLength={30}/></div></div>
-{(sBT==="Employee (MMP)"||sBT==="Corporate"||sPC.trim())&&<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16,padding:"8px 12px",background:"#fefce8",borderRadius:6,border:"1px solid #fef08a"}}><span style={{fontSize:13}}>⚠️</span><span style={{fontSize:11,color:"#854d0e",fontFamily:FF}}>Perks received with promo/corporate/employee rates may differ from standard elite benefits. This will be noted on your report.</span></div>}
-<div style={{display:"flex",gap:8}}><button onClick={subPerk} disabled={sub} style={{...BT(),opacity:sub?0.5:1}}>{editId?"Save Changes":"Submit"}</button>{editId&&<button onClick={resetForm} style={BT("#e2e8f0","#64748b")}>Cancel Edit</button>}{!editId&&<button onClick={resetForm} style={BT("#e2e8f0","#64748b")}>Cancel</button>}</div></div>}
+<h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:20}}>{editId?"Edit Perk":"Report Your Stay"}</h3>
+<div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:20}}><div style={{flex:"1 1 160px"}}><label style={LS}>Your Tier</label><select value={sT} onChange={e=>ssT(e.target.value)} style={IS}><option value="">Select...</option>{TIERS.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}</select></div>
+<div style={{flex:"1 1 140px"}}><label style={LS}>When did you stay?</label><input type="month" value={sDate} onChange={e=>ssDate(e.target.value)} style={IS}/></div>
+<div style={{flex:"1 1 180px"}}><label style={LS}>Booking Type <span style={{fontWeight:400,textTransform:"none"}}>(optional)</span></label><select value={sBT} onChange={e=>ssBT(e.target.value)} style={IS}><option value="">Select...</option>{BOOKING_TYPES.map(b=><option key={b} value={b}>{b}</option>)}</select></div>
+<div style={{flex:"1 1 180px"}}><label style={LS}>Promo/Corp Code <span style={{fontWeight:400,textTransform:"none"}}>(optional)</span></label><input value={sPC} onChange={e=>ssPC(e.target.value.slice(0,30))} placeholder="e.g. MMP" style={IS} maxLength={30}/></div></div>
+{(sBT==="Employee (MMP)"||sBT==="Corporate"||sPC.trim())&&<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:16,padding:"8px 12px",background:"#fefce8",borderRadius:6,border:"1px solid #fef08a"}}><span style={{fontSize:13}}>⚠️</span><span style={{fontSize:11,color:"#854d0e",fontFamily:FF}}>Perks received with promo/corporate/employee rates may differ from standard elite benefits.</span></div>}
+{entries.map((entry,i)=><div key={i} style={{background:"#fff",borderRadius:8,padding:20,border:"1px solid #e2e8f0",marginBottom:12,position:"relative"}}>
+<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+<span style={{fontSize:13,fontWeight:700,color:"#0f172a",fontFamily:FF}}>Perk {entries.length>1?`#${i+1}`:""}</span>
+{entries.length>1&&<button onClick={()=>removeEntry(i)} style={{background:"none",border:"none",color:"#dc2626",cursor:"pointer",fontSize:18,fontFamily:FF,padding:0,lineHeight:1}} aria-label="Remove this perk">×</button>}</div>
+<div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:12}}>
+<div style={{flex:"1 1 180px"}}><label style={LS}>Category</label><select value={entry.category} onChange={e=>{updateEntry(i,"category",e.target.value);updateEntry(i,"category_details",{})}} style={IS}><option value="">Select...</option>{CATS.map(c=><option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}</select></div></div>
+{entry.category==="upgrade"&&<div style={{marginBottom:12}}><label style={LS}>Upgrade Type</label><select value={entry.upgrade_type||""} onChange={e=>updateEntry(i,"upgrade_type",e.target.value)} style={IS}><option value="">Select type...</option>{UPGRADE_TYPES.map(u=><option key={u} value={u}>{u}</option>)}</select></div>}
+{entry.category&&<CategoryDetailFields category={entry.category} details={entry.category_details||{}} onChange={cd=>updateEntry(i,"category_details",cd)}/>}
+<div><label style={LS}>Describe the perk <CharCount val={entry.description} max={MAX_DESC}/></label><textarea value={entry.description} onChange={e=>updateEntry(i,"description",e.target.value.slice(0,MAX_DESC))} placeholder="e.g., Full hot buffet at the main restaurant, free for all Platinum+" style={{...IS,minHeight:70,resize:"vertical"}} maxLength={MAX_DESC}/></div>
+</div>)}
+{!editId&&<button onClick={addEntry} style={{background:"#fff",color:"#0f172a",border:"2px dashed #e2e8f0",borderRadius:8,padding:"12px 20px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF,width:"100%",marginBottom:16,transition:"all 0.15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#0f172a"} onMouseLeave={e=>e.currentTarget.style.borderColor="#e2e8f0"}>+ Add another category</button>}
+<div style={{display:"flex",gap:8}}><button onClick={subPerk} disabled={sub} style={{...BT(),opacity:sub?0.5:1}}>{editId?"Save Changes":`Submit ${entries.filter(e=>e.category&&e.description.trim()).length||""} Perk${entries.filter(e=>e.category&&e.description.trim()).length!==1?"s":""}`}</button><button onClick={resetForm} style={BT("#e2e8f0","#64748b")}>{editId?"Cancel Edit":"Cancel"}</button></div></div>}
 {ld?<div style={{padding:20}}><Skeleton h={200} r={8}/><div style={{height:12}}/><Skeleton h={150} r={8}/><div style={{height:12}}/><Skeleton h={150} r={8}/></div>:
 <div className="ps-detail-layout" style={{display:"flex",gap:24,alignItems:"flex-start"}}>
 <div style={{flex:"1 1 0",minWidth:0}}>
@@ -328,11 +369,12 @@ return<div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:FF,display:
 <button onClick={()=>user?ssad(true):ssa(true)} style={{background:"#fff",color:"#0f172a",border:"none",borderRadius:6,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+ Add Hotel</button></div></div>
 {isHome&&<div style={{paddingTop:24,paddingBottom:8}}><h1 style={{fontSize:52,fontWeight:700,color:"#fff",margin:"0 0 14px",lineHeight:1.02,maxWidth:520,fontFamily:FD}}>Titanium, Platinum, Ambassador Elite Perks &amp; Benefits</h1>
 <p style={{fontSize:16,color:"#94a3b8",margin:"0 0 36px",maxWidth:460,lineHeight:1.6,fontFamily:FF}}>Real Marriott Bonvoy elite benefits reported by real guests. Know what you're getting before you book.</p>
-<div style={{display:"flex",gap:10,flexWrap:"wrap"}}><input type="text" value={search} onChange={e=>ss(e.target.value)} placeholder="Search hotels or destinations..." aria-label="Search hotels" style={{flex:"1 1 320px",padding:"14px 18px",borderRadius:8,border:"1px solid #1e293b",background:"#1e293b",color:"#e2e8f0",fontSize:14,fontFamily:FF,outline:"none",boxSizing:"border-box"}}/>
+<div style={{display:"flex",gap:10,flexWrap:"wrap"}}><div style={{flex:"1 1 320px",position:"relative"}}><input type="text" value={search} onChange={e=>ss(e.target.value)} placeholder="Search hotels or destinations..." aria-label="Search hotels" style={{width:"100%",padding:"14px 40px 14px 18px",borderRadius:8,border:"1px solid #1e293b",background:"#1e293b",color:"#e2e8f0",fontSize:14,fontFamily:FF,outline:"none",boxSizing:"border-box"}}/>
+{search&&<button onClick={()=>ss("")} aria-label="Clear search" style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#94a3b8",fontSize:18,cursor:"pointer",padding:0,lineHeight:1,fontFamily:FF}}>×</button>}</div>
 <select value={bf} onChange={e=>sbf(e.target.value)} aria-label="Filter by brand" style={{padding:"14px 42px 14px 18px",borderRadius:8,border:"1px solid #1e293b",background:"#1e293b",color:"#e2e8f0",fontSize:13,fontFamily:FF,outline:"none",cursor:"pointer",minWidth:120,maxWidth:200,WebkitAppearance:"none",MozAppearance:"none",appearance:"none",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 18px center"}}><option value="" style={{background:"#fff",color:"#0f172a"}}>All Brands</option>{ub.map(b=><option key={b} value={b} style={{background:"#fff",color:"#0f172a"}}>{b}</option>)}</select></div></div>}</div></div>
 <div style={{flex:1,maxWidth:1100,margin:isHome?"-28px auto 0":"16px auto 0",padding:"0 28px 60px",position:"relative",width:"100%"}}>
 {page==="leaderboard"?<Leaderboard onClose={goHome} onProfile={viewProf}/>:page==="map"?<>{!ml?<div style={{textAlign:"center",padding:60,color:"#94a3b8"}}>Loading map...</div>:<MapView hotels={filt} perkCounts={pc} onSelect={openHotel}/>}</>:page==="search"?<><button onClick={goHome} style={{background:"#fff",border:"1px solid #e2e8f0",cursor:"pointer",fontSize:13,color:"#334155",fontWeight:600,fontFamily:FF,padding:"8px 16px",marginBottom:24,borderRadius:6}}>← Back</button><PerkSearch user={user} onNeedAuth={()=>ssa(true)}/></>:page==="compare"?<Comparison hotels={hotels} onClose={goHome}/>:page==="profile"&&profId?<UserProfile userId={profId} onClose={goHome}/>:page==="hotel"&&sel?<HotelDetail hotel={sel} user={user} onBack={goHome} onNeedAuth={()=>ssa(true)}/>:page==="hotel"&&hotelSlug&&!ld&&!sel?<div style={{textAlign:"center",padding:60}}><div style={{fontSize:40,marginBottom:12}}>🏨</div><h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:6}}>Hotel not found</h3><p style={{fontSize:13,color:"#94a3b8",marginBottom:20}}>This property may not exist yet.</p><button onClick={goHome} style={BT()}>← Back to all hotels</button></div>:ld?<div style={{padding:"60px 0"}}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{Array.from({length:12}).map((_,i)=><CardSkeleton key={i}/>)}</div></div>:<>{(()=>{const isSearching=!!search||!!bf;const scored=sortedFilt.filter(h=>(scores[h.id]||0)>0);const unscored=sortedFilt.filter(h=>!scores[h.id]);const showUnscored=isSearching||showAll;
-return<><div style={{marginBottom:14,marginTop:42}}><span style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>{isSearching?`${sortedFilt.length} propert${sortedFilt.length!==1?"ies":"y"}`:`${scored.length} propert${scored.length!==1?"ies":"y"} with reports`}</span></div>
+return<><div style={{marginBottom:14,marginTop:42}}><span style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>{isSearching?`${sortedFilt.length} propert${sortedFilt.length!==1?"ies":"y"}`:`${scored.length} featured propert${scored.length!==1?"ies":"y"}`}</span></div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{(isSearching?sortedFilt:scored).map(h=><HotelCard key={h.id} hotel={h} perkCounts={pc} score={scores[h.id]||0} onClick={()=>openHotel(h)}/>)}</div>
 {!isSearching&&unscored.length>0&&!showUnscored&&<div style={{textAlign:"center",marginTop:32}}><div style={{height:1,background:"linear-gradient(to right,transparent,#e2e8f0,transparent)",marginBottom:24}}/>
 <p style={{fontSize:13,color:"#94a3b8",fontFamily:FF,marginBottom:12}}>{unscored.length} more propert{unscored.length!==1?"ies":"y"} waiting for reports</p>
