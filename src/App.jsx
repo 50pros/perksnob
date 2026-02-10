@@ -258,7 +258,7 @@ return<div><button onClick={onBack} style={{background:"#fff",border:"1px solid 
 <div style={{width:64,height:64,borderRadius:"50%",background:"#1e293b",border:"2px solid #475569",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,fontWeight:700,fontFamily:FF,color:"#fff"}}>{dn.charAt(0).toUpperCase()}</div>
 <div style={{flex:1}}>
 <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}><h1 style={{fontSize:28,fontWeight:700,margin:0,fontFamily:FD}}>{dn}</h1>{tb&&<span style={{fontSize:14}} title={tb.label}>{tb.icon}</span>}</div>
-{tierInfo&&<div style={{display:"flex",alignItems:"center",gap:6,marginTop:6}}><span style={{fontSize:10,color:"#fff",fontWeight:700,fontFamily:FF,background:tierInfo.color,padding:"3px 10px",borderRadius:4,textTransform:"uppercase",letterSpacing:0.5}}>{tierInfo.label}{since?` since ${since}`:""}</span></div>}
+{tierInfo&&<div style={{display:"flex",alignItems:"center",gap:6,marginTop:6}}><span style={{fontSize:10,color:"#fff",fontWeight:700,fontFamily:FF,background:"rgba(255,255,255,0.12)",border:"1px solid rgba(255,255,255,0.25)",padding:"4px 12px",borderRadius:20,textTransform:"uppercase",letterSpacing:0.5}}>{tierInfo.label}{since?` since ${since}`:""}</span></div>}
 {profile?.bio&&<p style={{fontSize:13,color:"#cbd5e1",fontFamily:FF,marginTop:8,lineHeight:1.5}}>{profile.bio}</p>}
 {profile?.reddit_username&&<a href={`https://reddit.com/u/${profile.reddit_username}`} target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:"#e2e8f0",fontFamily:FF,textDecoration:"none",marginTop:4,display:"inline-block"}}>u/{profile.reddit_username} ↗</a>}
 </div>
