@@ -149,7 +149,7 @@ return<div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.7)",zInd
 <button onClick={go} disabled={ld} style={{width:"100%",...BT(),padding:"13px",fontSize:14,opacity:ld?0.5:1}}>{ld?"...":mode==="signup"?"Create Account":mode==="reset"?"Send Reset Link":"Sign In"}</button>
 <div style={{textAlign:"center",marginTop:18,display:"flex",flexDirection:"column",gap:8}}>
 {mode==="signin"&&<button onClick={()=>{sMode("reset");sr("");smsg("")}} style={{background:"none",border:"none",color:"#94a3b8",fontSize:12,cursor:"pointer",fontFamily:FF}}>Forgot password?</button>}
-<button onClick={()=>{sMode(mode==="signup"?"signin":mode==="reset"?"signin":"signup");sr("");smsg("")}} style={{background:"none",border:"none",color:"#0f172a",fontSize:13,cursor:"pointer",fontFamily:FF,fontWeight:600,textDecoration:"underline",textUnderlineOffset:3}}>{mode==="signup"?"Already have an account?":mode==="reset"?"Back to sign in":"Need an account?"}</button></div>
+<button onClick={()=>{sMode(mode==="signup"?"signin":mode==="reset"?"signin":"signup");sr("");smsg("")}} style={{background:"none",border:"none",color:"#0f172a",fontSize:13,cursor:"pointer",fontFamily:FF,fontWeight:600,textDecoration:"underline",textUnderlineOffset:3}}>{mode==="signup"?"Already have an account?":mode==="reset"?"Back to sign in":"New? Join and create account"}</button></div>
 </>}
 </div></div>}
 
