@@ -70,7 +70,7 @@ function Footer(){return<footer style={{background:"#0f172a",borderTop:"1px soli
 {[{l:"Home",p:"/"},{l:"Map",p:"/map"},{l:"Search Perks",p:"/search"},{l:"Compare",p:"/compare"},{l:"Leaderboard",p:"/leaderboard"}].map(x=><a key={x.p} href={x.p} onClick={e=>{e.preventDefault();window.history.pushState({},"",x.p);window.dispatchEvent(new PopStateEvent("popstate"))}} style={{display:"block",fontSize:13,color:"#64748b",fontFamily:FF,textDecoration:"none",marginBottom:6,transition:"color 0.15s"}} onMouseEnter={e=>e.target.style.color="#fff"} onMouseLeave={e=>e.target.style.color="#64748b"}>{x.l}</a>)}</div>
 <div><div style={{fontSize:10,fontWeight:700,color:"#94a3b8",fontFamily:FF,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Community</div>
 <a href="https://www.reddit.com/r/marriott/" target="_blank" rel="noopener noreferrer" style={{display:"block",fontSize:13,color:"#64748b",fontFamily:FF,textDecoration:"none",marginBottom:6}}>r/marriott</a>
-<a href="mailto:hello@perksnob.com" style={{display:"block",fontSize:13,color:"#64748b",fontFamily:FF,textDecoration:"none",marginBottom:6}}>Contact</a></div>
+<a href="https://www.reddit.com/user/MarriottGuy/" target="_blank" rel="noopener noreferrer" style={{display:"block",fontSize:13,color:"#64748b",fontFamily:FF,textDecoration:"none",marginBottom:6}}>Contact (Reddit)</a></div>
 </div></div>
 <div style={{maxWidth:1100,margin:"20px auto 0",paddingTop:20,borderTop:"1px solid #1e293b"}}><p style={{fontSize:11,color:"#475569",fontFamily:FF}}>PerkSnob is not affiliated with Marriott International. All trademarks belong to their respective owners.</p></div></footer>}
 
