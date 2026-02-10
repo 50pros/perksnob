@@ -234,6 +234,80 @@ return<div><button onClick={onClose} style={{background:"#fff",border:"1px solid
 <div style={{textAlign:"center",fontSize:16,fontWeight:700,color:"#0f172a",fontFamily:FF}}>{l.total_reports}</div><div style={{textAlign:"center",fontSize:13,color:"#64748b",fontFamily:FF}}>{l.hotels_covered}</div></div>)}
 {!ls.length&&<div style={{padding:40,textAlign:"center",color:"#94a3b8"}}>No contributions yet. Be the first!</div>}</div>}</div>}
 
+const BADGES=[
+{key:"first",icon:"🏅",label:"First Report",desc:"Submitted your first perk report",test:s=>s.reports>=1},
+{key:"regular",icon:"🔥",label:"Regular",desc:"10+ perk reports",test:s=>s.reports>=10},
+{key:"power",icon:"⭐",label:"Power Contributor",desc:"25+ perk reports",test:s=>s.reports>=25},
+{key:"elite_rev",icon:"👑",label:"Elite Reviewer",desc:"50+ perk reports",test:s=>s.reports>=50},
+{key:"globe",icon:"🌍",label:"Globe Trotter",desc:"Reports at 10+ different hotels",test:s=>s.hotels>=10},
+{key:"trusted",icon:"✅",label:"Trusted Voice",desc:"10+ confirmations received",test:s=>s.confirmations>=10},
+{key:"detail",icon:"📝",label:"Detail King",desc:"10+ reports with all details filled",test:s=>s.detailed>=10},
+];
+function getBadges(stats){return BADGES.filter(b=>b.test(stats))}
+function topBadge(stats){const b=getBadges(stats);return b.length?b[b.length-1]:null}
+
+function UserProfile({userId,currentUser,onBack,hotels}){
+const[profile,setProfile]=useState(null),[stats,setStats]=useState({reports:0,hotels:0,confirmations:0,detailed:0}),[perks,setPerks]=useState([]),[editing,setEditing]=useState(false),[ld,sld]=useState(true);
+const[bio,setBio]=useState(""),[tier,setTier]=useState(""),[since,setSince]=useState(""),[reddit,setReddit]=useState("");
+const isOwn=currentUser&&currentUser.id===userId;
+useEffect(()=>{(async()=>{sld(true);
+const{data:p}=await supabase.from("user_profiles").select("*").eq("id",userId).single();
+if(p){setProfile(p);setBio(p.bio||"");setTier(p.elite_tier||"");setSince(p.elite_since||"");setReddit(p.reddit_username||"")}
+const{data:rp}=await supabase.from("perk_reports").select("*").eq("user_id",userId);
+const myPerks=rp||[];setPerks(myPerks);
+const hotelSet=new Set(myPerks.map(r=>r.hotel_id));
+const detailed=myPerks.filter(r=>r.category_details&&Object.keys(r.category_details).length>=2).length;
+const{count:confCount}=await supabase.from("perk_reports").select("*",{count:"exact",head:true}).eq("user_id",userId);
+setStats({reports:myPerks.length,hotels:hotelSet.size,confirmations:confCount||0,detailed});
+sld(false)})()},[userId]);
+const save=async()=>{const{error}=await supabase.from("user_profiles").upsert({id:userId,display_name:profile?.display_name,bio:bio.trim()||null,elite_tier:tier||null,elite_since:since||null,reddit_username:reddit.trim()||null});
+if(error){showToast("Error saving: "+error.message,"error");return}setProfile({...profile,bio:bio.trim(),elite_tier:tier,elite_since:since,reddit_username:reddit.trim()});setEditing(false);showToast("Profile saved!")};
+const badges=getBadges(stats);const tb=topBadge(stats);const dn=profile?.display_name||"User";
+const tierInfo=tier?gt(tier):null;
+const hotelMap={};hotels.forEach(h=>{hotelMap[h.id]=h});
+return<div><button onClick={onBack} style={{background:"#fff",border:"1px solid #e2e8f0",cursor:"pointer",fontSize:13,color:"#334155",fontWeight:600,fontFamily:FF,padding:"8px 16px",marginBottom:24,borderRadius:6}}>← Back</button>
+<div style={{background:"#0f172a",borderRadius:12,padding:36,marginBottom:28,color:"#fff"}}>
+<div style={{display:"flex",alignItems:"center",gap:20,flexWrap:"wrap"}}>
+<div style={{width:64,height:64,borderRadius:"50%",background:"#1e293b",border:"2px solid #475569",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,fontWeight:700,fontFamily:FF,color:"#fff"}}>{dn.charAt(0).toUpperCase()}</div>
+<div style={{flex:1}}>
+<div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}><h1 style={{fontSize:28,fontWeight:700,margin:0,fontFamily:FD}}>{dn}</h1>{tb&&<span style={{fontSize:14}} title={tb.label}>{tb.icon}</span>}</div>
+{tierInfo&&<div style={{display:"flex",alignItems:"center",gap:6,marginTop:6}}><span style={{fontSize:10,color:tierInfo.color,fontWeight:700,fontFamily:FF,background:"rgba(255,255,255,0.1)",padding:"2px 8px",borderRadius:4,textTransform:"uppercase"}}>{tierInfo.label}{since?` since ${since}`:""}</span></div>}
+{profile?.bio&&<p style={{fontSize:13,color:"#94a3b8",fontFamily:FF,marginTop:8,lineHeight:1.5}}>{profile.bio}</p>}
+{profile?.reddit_username&&<a href={`https://reddit.com/u/${profile.reddit_username}`} target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:"#94a3b8",fontFamily:FF,textDecoration:"none",marginTop:4,display:"inline-block"}}>u/{profile.reddit_username} ↗</a>}
+</div>
+{isOwn&&!editing&&<button onClick={()=>setEditing(true)} style={{background:"rgba(255,255,255,0.1)",color:"#fff",border:"1px solid #475569",borderRadius:6,padding:"8px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Edit Profile</button>}
+</div></div>
+{editing&&<div style={{background:"#fff",borderRadius:10,padding:24,border:"1px solid #e2e8f0",marginBottom:24}}>
+<h3 style={{fontSize:16,fontWeight:700,color:"#0f172a",fontFamily:FD,marginTop:0,marginBottom:16}}>Edit Profile</h3>
+<div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:14}}>
+<div style={{flex:"1 1 180px"}}><label style={LS}>Elite Tier</label><select value={tier} onChange={e=>setTier(e.target.value)} style={IS}><option value="">Select...</option>{TIERS.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}</select></div>
+<div style={{flex:"1 1 120px"}}><label style={LS}>Elite Since (year)</label><select value={since} onChange={e=>setSince(e.target.value)} style={IS}><option value="">Year...</option>{Array.from({length:15},(_,i)=>2025-i).map(y=><option key={y} value={y}>{y}</option>)}</select></div>
+<div style={{flex:"1 1 180px"}}><label style={LS}>Reddit Username</label><input value={reddit} onChange={e=>setReddit(e.target.value.replace(/^u\//,"").slice(0,30))} placeholder="e.g. MarriottGuy" style={IS} maxLength={30}/></div>
+</div>
+<div style={{marginBottom:14}}><label style={LS}>Bio <CharCount val={bio} max={200}/></label><textarea value={bio} onChange={e=>setBio(e.target.value.slice(0,200))} placeholder="Tell others about your travel style..." style={{...IS,minHeight:60,resize:"vertical"}} maxLength={200}/></div>
+<div style={{display:"flex",gap:8}}><button onClick={save} style={BT()}>Save Profile</button><button onClick={()=>setEditing(false)} style={BT("#e2e8f0","#64748b")}>Cancel</button></div></div>}
+<div style={{display:"flex",gap:16,marginBottom:24,flexWrap:"wrap"}}>
+{[{label:"Reports",value:stats.reports,icon:"📊"},{label:"Hotels Reviewed",value:stats.hotels,icon:"🏨"},{label:"Badges Earned",value:badges.length,icon:"🏅"}].map(s=><div key={s.label} style={{flex:"1 1 140px",background:"#fff",borderRadius:10,padding:20,border:"1px solid #e2e8f0",textAlign:"center"}}>
+<div style={{fontSize:24,marginBottom:4}}>{s.icon}</div>
+<div style={{fontSize:28,fontWeight:700,color:"#0f172a",fontFamily:FD}}>{s.value}</div>
+<div style={{fontSize:11,color:"#94a3b8",fontFamily:FF,textTransform:"uppercase",letterSpacing:1}}>{s.label}</div></div>)}</div>
+{badges.length>0&&<div style={{background:"#fff",borderRadius:10,padding:24,border:"1px solid #e2e8f0",marginBottom:24}}>
+<h3 style={{fontSize:14,fontWeight:700,color:"#0f172a",fontFamily:FF,marginTop:0,marginBottom:16}}>Badges</h3>
+<div style={{display:"flex",gap:12,flexWrap:"wrap"}}>{BADGES.map(b=>{const earned=b.test(stats);return<div key={b.key} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",background:earned?"#f0fdf4":"#f8fafc",border:earned?"1px solid #bbf7d0":"1px solid #e2e8f0",borderRadius:8,opacity:earned?1:0.4}}>
+<span style={{fontSize:20}}>{b.icon}</span><div><div style={{fontSize:12,fontWeight:600,color:"#0f172a",fontFamily:FF}}>{b.label}</div><div style={{fontSize:10,color:"#64748b",fontFamily:FF}}>{b.desc}</div></div></div>})}</div></div>}
+{perks.length>0&&<div style={{background:"#fff",borderRadius:10,padding:24,border:"1px solid #e2e8f0"}}>
+<h3 style={{fontSize:14,fontWeight:700,color:"#0f172a",fontFamily:FF,marginTop:0,marginBottom:16}}>Recent Reports</h3>
+{perks.slice(0,20).map(p=>{const h=hotelMap[p.hotel_id];const cat=gc(p.category);return<div key={p.id} style={{padding:"12px 0",borderBottom:"1px solid #f1f5f9",display:"flex",alignItems:"flex-start",gap:10}}>
+<span style={{fontSize:16}}>{cat.icon}</span><div style={{flex:1}}>
+<div style={{fontSize:13,fontWeight:600,color:"#0f172a",fontFamily:FF}}>{h?.name||"Unknown Hotel"}</div>
+<div style={{fontSize:11,color:"#64748b",fontFamily:FF}}>{h?.location}</div>
+<div style={{fontSize:12,color:"#475569",fontFamily:FF,marginTop:4}}>{p.description}</div>
+<CategoryDetailTags category={p.category} details={p.category_details}/>
+</div></div>})}
+</div>}
+{!ld&&!perks.length&&<div style={{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13,fontFamily:FF}}>{isOwn?"You haven't submitted any reports yet. Start contributing!":"This user hasn't submitted any reports yet."}</div>}
+</div>}
+
 function HotelDetail({hotel,user,onBack,onNeedAuth}){const[sf,ssf]=useState(false),[perks,sp]=useState([]),[cmts,sc]=useState([]),[ld,sl]=useState(true),[err,ser]=useState("");
 const[sT,ssT]=useState(""),[sDate,ssDate]=useState(""),[sub,sSub]=useState(false);
 const[sBT,ssBT]=useState(""),[sPC,ssPC]=useState("");
@@ -374,9 +448,9 @@ return<div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:FF,display:
 <div style={{background:"#0f172a",padding:isHome?"0 0 56px":"0 0 20px"}}><div style={{maxWidth:1100,margin:"0 auto",padding:"16px 28px 0"}}>
 <div className="ps-header" style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
 <div onClick={goHome} style={{cursor:"pointer",display:"flex",alignItems:"baseline",gap:1}} role="link" aria-label="PerkSnob home"><span style={{fontSize:36,fontWeight:700,color:"#fff",fontFamily:FD}}>Perk</span><span style={{fontSize:36,fontWeight:700,color:"#94a3b8",fontFamily:FD}}>Snob</span></div>
-<nav className="ps-nav" style={{display:"flex",alignItems:"center",gap:2}} aria-label="Main navigation">{navBtn("Map","/map")}{navBtn("Search","/search")}{navBtn("Compare","/compare")}{navBtn("Leaderboard","/leaderboard")}</nav>
+<nav className="ps-nav" style={{display:"flex",alignItems:"center",gap:2}} aria-label="Main navigation">{navBtn("Map","/map")}{navBtn("Compare","/compare")}{navBtn("Leaderboard","/leaderboard")}</nav>
 <div className="ps-auth" style={{display:"flex",gap:8,alignItems:"center"}}>
-{user?<><span style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>{dname(user)}</span><button onClick={async()=>{await supabase.auth.signOut();su(null);showToast("Signed out.")}} style={{background:"transparent",color:"#94a3b8",border:"1px solid #475569",borderRadius:6,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Logout</button></>:<button onClick={()=>ssa(true)} style={{background:"transparent",color:"#94a3b8",border:"1px solid #475569",borderRadius:6,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Sign In</button>}
+{user?<><button onClick={()=>nav("/profile/"+user.id)} style={{background:"transparent",color:"#94a3b8",border:"none",padding:"7px 10px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF,textDecoration:path==="/profile/"+user.id?"underline":"none"}}>{dname(user)}</button><button onClick={async()=>{await supabase.auth.signOut();su(null);showToast("Signed out.")}} style={{background:"transparent",color:"#94a3b8",border:"1px solid #475569",borderRadius:6,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Logout</button></>:<button onClick={()=>ssa(true)} style={{background:"transparent",color:"#94a3b8",border:"1px solid #475569",borderRadius:6,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Sign In</button>}
 <button onClick={()=>user?ssad(true):ssa(true)} style={{background:"#fff",color:"#0f172a",border:"none",borderRadius:6,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+ Add Hotel</button></div></div>
 {isHome&&<div style={{paddingTop:24,paddingBottom:8}}><h1 style={{fontSize:52,fontWeight:700,color:"#fff",margin:"0 0 14px",lineHeight:1.02,maxWidth:520,fontFamily:FD}}>Titanium, Platinum, Ambassador Elite Perks &amp; Benefits</h1>
 <p style={{fontSize:16,color:"#94a3b8",margin:"0 0 36px",maxWidth:460,lineHeight:1.6,fontFamily:FF}}>Real Marriott Bonvoy elite benefits reported by real guests. Know what you're getting before you book.</p>
@@ -386,7 +460,7 @@ return<div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:FF,display:
 <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:14}}><span style={{fontSize:11,color:"#64748b",fontFamily:FF,alignSelf:"center",marginRight:4}}>Filter by perk:</span>{PERK_FILTERS.map(f=>{const active=perkFilter.includes(f.key);const count=Object.keys(hotelPerks).filter(id=>f.test(hotelPerks[id])).length;return<button key={f.key} onClick={()=>setPF(active?perkFilter.filter(k=>k!==f.key):[...perkFilter,f.key])} style={{background:active?"#fff":"rgba(255,255,255,0.08)",color:active?"#0f172a":"#94a3b8",border:active?"1px solid #fff":"1px solid rgba(255,255,255,0.1)",borderRadius:20,padding:"5px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF,transition:"all 0.15s",display:"flex",alignItems:"center",gap:4}}>{f.label}{count>0&&<span style={{fontSize:9,opacity:0.7}}>({count})</span>}</button>})}{perkFilter.length>0&&<button onClick={()=>setPF([])} style={{background:"none",border:"none",color:"#94a3b8",fontSize:11,cursor:"pointer",fontFamily:FF,textDecoration:"underline"}}>Clear filters</button>}</div>
 </div>}</div></div>
 <div style={{flex:1,maxWidth:1100,margin:isHome?"-28px auto 0":"16px auto 0",padding:"0 28px 60px",position:"relative",width:"100%"}}>
-{page==="leaderboard"?<Leaderboard onClose={goHome} onProfile={viewProf}/>:page==="map"?<>{!ml?<div style={{textAlign:"center",padding:60,color:"#94a3b8"}}>Loading map...</div>:<MapView hotels={filt} perkCounts={pc} onSelect={openHotel}/>}</>:page==="search"?<><button onClick={goHome} style={{background:"#fff",border:"1px solid #e2e8f0",cursor:"pointer",fontSize:13,color:"#334155",fontWeight:600,fontFamily:FF,padding:"8px 16px",marginBottom:24,borderRadius:6}}>← Back</button><PerkSearch user={user} onNeedAuth={()=>ssa(true)}/></>:page==="compare"?<Comparison hotels={hotels} onClose={goHome}/>:page==="profile"&&profId?<UserProfile userId={profId} onClose={goHome}/>:page==="hotel"&&sel?<HotelDetail hotel={sel} user={user} onBack={goHome} onNeedAuth={()=>ssa(true)}/>:page==="hotel"&&hotelSlug&&!ld&&!sel?<div style={{textAlign:"center",padding:60}}><div style={{fontSize:40,marginBottom:12}}>🏨</div><h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:6}}>Hotel not found</h3><p style={{fontSize:13,color:"#94a3b8",marginBottom:20}}>This property may not exist yet.</p><button onClick={goHome} style={BT()}>← Back to all hotels</button></div>:ld?<div style={{padding:"60px 0"}}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{Array.from({length:12}).map((_,i)=><CardSkeleton key={i}/>)}</div></div>:<>{(()=>{const isSearching=!!search||!!bf||perkFilter.length>0;const scored=sortedFilt.filter(h=>(scores[h.id]||0)>0);const unscored=sortedFilt.filter(h=>!scores[h.id]);const showUnscored=isSearching||showAll;
+{page==="leaderboard"?<Leaderboard onClose={goHome} onProfile={viewProf}/>:page==="map"?<>{!ml?<div style={{textAlign:"center",padding:60,color:"#94a3b8"}}>Loading map...</div>:<MapView hotels={filt} perkCounts={pc} onSelect={openHotel}/>}</>:page==="search"?<><button onClick={goHome} style={{background:"#fff",border:"1px solid #e2e8f0",cursor:"pointer",fontSize:13,color:"#334155",fontWeight:600,fontFamily:FF,padding:"8px 16px",marginBottom:24,borderRadius:6}}>← Back</button><PerkSearch user={user} onNeedAuth={()=>ssa(true)}/></>:page==="compare"?<Comparison hotels={hotels} onClose={goHome}/>:page==="profile"&&profId?<UserProfile userId={profId} currentUser={user} onBack={goHome} hotels={hotels}/>:page==="hotel"&&sel?<HotelDetail hotel={sel} user={user} onBack={goHome} onNeedAuth={()=>ssa(true)}/>:page==="hotel"&&hotelSlug&&!ld&&!sel?<div style={{textAlign:"center",padding:60}}><div style={{fontSize:40,marginBottom:12}}>🏨</div><h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:6}}>Hotel not found</h3><p style={{fontSize:13,color:"#94a3b8",marginBottom:20}}>This property may not exist yet.</p><button onClick={goHome} style={BT()}>← Back to all hotels</button></div>:ld?<div style={{padding:"60px 0"}}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{Array.from({length:12}).map((_,i)=><CardSkeleton key={i}/>)}</div></div>:<>{(()=>{const isSearching=!!search||!!bf||perkFilter.length>0;const scored=sortedFilt.filter(h=>(scores[h.id]||0)>0);const unscored=sortedFilt.filter(h=>!scores[h.id]);const showUnscored=isSearching||showAll;
 return<><div style={{marginBottom:14,marginTop:42}}><span style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>{isSearching?`${sortedFilt.length} propert${sortedFilt.length!==1?"ies":"y"}`:`${scored.length} featured propert${scored.length!==1?"ies":"y"}`}</span></div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{(isSearching?sortedFilt:scored).map(h=><HotelCard key={h.id} hotel={h} perkCounts={pc} score={scores[h.id]||0} onClick={()=>openHotel(h)}/>)}</div>
 {!isSearching&&unscored.length>0&&!showUnscored&&<div style={{textAlign:"center",marginTop:32}}><div style={{height:1,background:"linear-gradient(to right,transparent,#e2e8f0,transparent)",marginBottom:24}}/>
