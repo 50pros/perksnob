@@ -219,7 +219,7 @@ const isHome=page==="home";
 return<div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:FF}}>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet"/>
 <style>{`::selection{background:#0f172a;color:#fff}input::placeholder,textarea::placeholder{color:#94a3b8}body{margin:0}
-@media(max-width:768px){.ps-header{flex-direction:column!important;align-items:flex-start!important}.ps-nav{order:1;width:100%;justify-content:flex-start!important;margin:0 -8px}.ps-auth{order:2;width:100%;margin-top:4px}.ps-detail-layout{flex-direction:column!important}.ps-tips-sidebar{flex:1 1 auto!important;position:static!important;width:100%!important;max-width:100%!important}}`}</style>
+@media(max-width:768px){.ps-header{flex-direction:column!important;align-items:flex-start!important}.ps-nav{order:1;width:100%;justify-content:flex-start!important;margin-left:-16px}.ps-auth{order:2;width:100%;margin-top:2px;margin-left:-2px}.ps-detail-layout{flex-direction:column!important}.ps-tips-sidebar{flex:1 1 auto!important;position:static!important;width:100%!important;max-width:100%!important}}`}</style>
 {showAuth&&<AuthModal onClose={()=>ssa(false)} onAuth={()=>supabase.auth.getUser().then(({data})=>su(data?.user))}/>}
 {showAdd&&<AddHotelModal onClose={()=>ssad(false)} user={user} onNeedAuth={()=>ssa(true)} onAdded={loadH} existingHotels={hotels}/>}
 <div style={{background:"#0f172a",padding:isHome?"0 0 56px":"0 0 20px"}}><div style={{maxWidth:1100,margin:"0 auto",padding:"16px 28px 0"}}>
