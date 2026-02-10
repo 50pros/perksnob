@@ -5,6 +5,39 @@ const CATS=[{key:"breakfast",icon:"🍳",label:"Breakfast"},{key:"lounge",icon:"
 const BRANDS=["The Ritz-Carlton","St. Regis","W Hotels","EDITION","The Luxury Collection","JW Marriott"];
 const BOOKING_TYPES=["Direct","Points","Amex FHR","Virtuoso","STARS","Corporate","Employee (MMP)","Other"];
 const UPGRADE_TYPES=["Same category, better room","Higher category","Suite upgrade"];
+const CATEGORY_FIELDS={
+breakfast:[
+{key:"format",label:"Format",type:"select",options:["Buffet","À la carte","Both","Credit only"]},
+{key:"quality",label:"Quality",type:"rating",max:5},
+{key:"hot_food",label:"Hot food included?",type:"select",options:["Yes","No"]}],
+lounge:[
+{key:"status",label:"Status",type:"select",options:["Open","Closed","Renovating"]},
+{key:"food_type",label:"Food served?",type:"select",options:["Full meals","Snacks only","Drinks only"]},
+{key:"evening_apps",label:"Evening appetizers?",type:"select",options:["Yes","No"]}],
+upgrade:[
+{key:"stay_length",label:"Length of stay",type:"select",options:["1–2 nights","3–4 nights","5+ nights"]},
+{key:"how_granted",label:"How was it granted?",type:"select",options:["Proactive (at check-in)","Upon request","Through app/SNNA","Not granted"]}],
+gift:[
+{key:"gift_type",label:"Type",type:"select",options:["Food & beverage","Amenity (non-food)","Points","Letter only","Nothing"]}],
+late_checkout:[
+{key:"time_granted",label:"Time granted",type:"select",options:["1:00 PM","2:00 PM","3:00 PM","4:00 PM","No late checkout"]}],
+spa:[
+{key:"spa_type",label:"What was offered?",type:"select",options:["Discount","Credit","Free treatment","Free access only","Nothing"]}],
+fnb_credit:[
+{key:"amount",label:"Amount per night",type:"text",placeholder:"e.g. $50"},
+{key:"where",label:"Where can it be used?",type:"select",options:["Restaurant","Bar","Room service","Any outlet"]}],
+parking:[
+{key:"included",label:"Included free?",type:"select",options:["Yes, free","Discounted","No"]},
+{key:"parking_type",label:"Type",type:"select",options:["Self-park","Valet","Both"]}],
+housekeeping:[
+{key:"frequency",label:"Frequency",type:"select",options:["Daily","Every other day","On request only","Not offered"]}],
+bathroom:[
+{key:"door_type",label:"Door type",type:"select",options:["Solid door","Frosted glass","Clear glass","Open concept","Sliding barn door"]},
+{key:"separate_toilet",label:"Separate toilet room?",type:"select",options:["Yes","No"]}],
+drinks:[
+{key:"drink_type",label:"Type",type:"select",options:["In-room machine","Lobby café","Lounge only","Complimentary at restaurant","Minibar credit"]}],
+other:[]
+};
 const MAX_DESC=500,MAX_NAME=30,MAX_TIP=300;
 const gc=k=>CATS.find(c=>c.key===k)||CATS[CATS.length-1],gt=k=>TIERS.find(t=>t.key===k)||TIERS[2];
 const cc=c=>c==="high"?"#1a1a1a":c==="medium"?"#6b7280":"#9ca3af",cl=c=>c==="high"?"Well established":c==="medium"?"Frequently reported":"Few reports",cv=n=>n>=8?"high":n>=4?"medium":"low";
@@ -38,6 +71,26 @@ function ScoreBadge({score}){const c=score>=70?"#059669":score>=40?"#d97706":"#d
 /* Character counter */
 function CharCount({val,max}){const r=max-val.length;return<span style={{fontSize:10,color:r<20?"#dc2626":"#94a3b8",fontFamily:FF,float:"right"}}>{r}</span>}
 
+/* Star rating input */
+function StarInput({value,onChange,max=5}){return<div style={{display:"flex",gap:2}}>{Array.from({length:max}).map((_,i)=><button key={i} type="button" onClick={()=>onChange(i+1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,padding:0,color:i<value?"#f59e0b":"#e2e8f0"}} aria-label={`${i+1} star${i+1>1?"s":""}`}>★</button>)}</div>}
+
+/* Dynamic category detail form fields */
+function CategoryDetailFields({category,details,onChange}){const fields=CATEGORY_FIELDS[category]||[];if(!fields.length)return null;
+const set=(k,v)=>onChange({...details,[k]:v});
+return<div style={{marginBottom:16,padding:16,background:"#fff",borderRadius:8,border:"1px solid #e2e8f0"}}><div style={{fontSize:11,fontWeight:700,color:"#64748b",fontFamily:FF,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Optional details <span style={{fontWeight:400,textTransform:"none",letterSpacing:0}}> — helps others know what to expect</span></div>
+<div style={{display:"flex",gap:12,flexWrap:"wrap"}}>{fields.map(f=><div key={f.key} style={{flex:f.type==="text"?"1 1 160px":"0 0 auto",minWidth:f.type==="select"?140:120}}>
+<label style={{...LS,marginBottom:4}}>{f.label}</label>
+{f.type==="select"?<select value={details[f.key]||""} onChange={e=>set(f.key,e.target.value)} style={{...IS,fontSize:12,padding:"8px 10px"}}><option value="">—</option>{f.options.map(o=><option key={o} value={o}>{o}</option>)}</select>
+:f.type==="rating"?<StarInput value={details[f.key]||0} onChange={v=>set(f.key,v)} max={f.max||5}/>
+:<input value={details[f.key]||""} onChange={e=>set(f.key,e.target.value)} placeholder={f.placeholder||""} style={{...IS,fontSize:12,padding:"8px 10px"}} maxLength={30}/>}
+</div>)}</div></div>}
+
+/* Display category details as tags on perk cards */
+function CategoryDetailTags({category,details}){if(!details||typeof details!=="object")return null;const fields=CATEGORY_FIELDS[category]||[];if(!fields.length)return null;
+const tags=fields.map(f=>{const v=details[f.key];if(!v)return null;if(f.type==="rating")return{label:f.label,value:"★".repeat(v)+"☆".repeat((f.max||5)-v)};return{label:f.label,value:v}}).filter(Boolean);
+if(!tags.length)return null;
+return<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>{tags.map((t,i)=><span key={i} style={{...TAG("#f0f9ff","#0369a1"),fontSize:9,gap:3}}><span style={{opacity:0.7}}>{t.label}:</span> {t.value}</span>)}</div>}
+
 function PerkCard({perk,user,onUp,onDown,onEdit,onDelete,showHotel}){const cat=gc(perk.category),conf=cv(perk.total_confirmations),stay=fsd(perk.latest_stay);const[sd,ssd]=useState(false);
 const isOwner=user&&perk.user_id===user.id;const hasPromo=perk.promo_code||perk.booking_type==="Employee (MMP)"||perk.booking_type==="Corporate";
 return<div style={{display:"flex",gap:14,padding:"14px 0",borderBottom:"1px solid #f1f5f9"}}><div style={{width:38,height:38,borderRadius:8,background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,flexShrink:0,border:"1px solid #e2e8f0"}} role="img" aria-label={cat.label}>{cat.icon}</div>
@@ -49,6 +102,7 @@ return<div style={{display:"flex",gap:14,padding:"14px 0",borderBottom:"1px soli
 {hasPromo&&<span style={{...TAG("#fefce8","#a16207")}} title="Booked with a promo/corporate/employee code — perks may differ from standard bookings">⚠️ {perk.promo_code||"Promo/Corp rate"}</span>}
 {stay&&<span style={{fontSize:9,color:"#94a3b8",fontFamily:FF,background:"#f8fafc",padding:"2px 6px",borderRadius:3}}>Stay: {stay}</span>}</div>
 <div style={{fontSize:13,color:"#475569",lineHeight:1.6,fontFamily:FF}}>{perk.summary||perk.description}</div>
+<CategoryDetailTags category={perk.category} details={perk.category_details}/>
 <div style={{marginTop:6,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
 <span style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:10,fontFamily:FF,color:cc(conf),background:"#f8fafc",padding:"3px 8px",borderRadius:12,fontWeight:600,border:"1px solid #f1f5f9"}}><span style={{width:4,height:4,borderRadius:"50%",background:cc(conf)}}/>{perk.total_confirmations} report{perk.total_confirmations!==1?"s":""} · {cl(conf)}</span>
 {user&&<><button onClick={()=>onUp(perk)} aria-label="Confirm perk" style={{background:"none",border:"1px solid #e2e8f0",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",color:"#64748b",fontFamily:FF,fontWeight:600}}>Confirm</button>
@@ -159,22 +213,24 @@ return<div><button onClick={onClose} style={{background:"#fff",border:"1px solid
 function HotelDetail({hotel,user,onBack,onNeedAuth}){const[sf,ssf]=useState(false),[perks,sp]=useState([]),[cmts,sc]=useState([]),[ld,sl]=useState(true),[err,ser]=useState("");
 const[sT,ssT]=useState(""),[sC,ssC]=useState(""),[sD,ssD]=useState(""),[sDate,ssDate]=useState(""),[sub,sSub]=useState(false);
 const[sBT,ssBT]=useState(""),[sPC,ssPC]=useState(""),[sUT,ssUT]=useState("");
+const[sCd,ssCd]=useState({});
 const[cT,scT]=useState(""),[cX,scX]=useState("");
 const[editId,setEditId]=useState(null);const lastSub=useRef(0);
 useTitle(`${hotel.name} — Elite Perk Benefits | PerkSnob`);
 const load=useCallback(async()=>{sl(true);ser("");try{const{data:pd,error:e1}=await supabase.from("perk_reports").select("*").eq("hotel_id",hotel.id).order("created_at",{ascending:false});if(e1)throw e1;
 const pm={};(pd||[]).forEach(p=>{const k=`${p.elite_tier}|${p.category}|${p.description}`;if(!pm[k])pm[k]={...p,total_confirmations:1,summary:p.description,latest_stay:p.stay_date};else{pm[k].total_confirmations+=1;if(p.stay_date&&(!pm[k].latest_stay||p.stay_date>pm[k].latest_stay))pm[k].latest_stay=p.stay_date}});sp(Object.values(pm));
 const{data:cd}=await supabase.from("comments").select("*").eq("hotel_id",hotel.id).order("created_at",{ascending:false});sc(cd||[])}catch(e){ser("Failed to load hotel data. Please try again.");console.error(e)}sl(false)},[hotel.id]);useEffect(()=>{load()},[load]);
-const resetForm=()=>{ssT("");ssC("");ssD("");ssDate("");ssBT("");ssPC("");ssUT("");setEditId(null);ssf(false)};
+const resetForm=()=>{ssT("");ssC("");ssD("");ssDate("");ssBT("");ssPC("");ssUT("");ssCd({});setEditId(null);ssf(false)};
 const subPerk=async()=>{if(!user){onNeedAuth();return}if(!sT||!sC||!sD.trim())return;if(sD.trim().length>MAX_DESC){showToast(`Description must be ${MAX_DESC} characters or less`,"error");return}
 const now=Date.now();if(!editId&&now-lastSub.current<10000){showToast("Please wait a few seconds between submissions","error");return}
 sSub(true);const row={hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:sT,category:sC,description:sD.trim()};if(sDate)row.stay_date=sDate+"-01";if(sBT)row.booking_type=sBT;if(sPC.trim())row.promo_code=sPC.trim();if(sC==="upgrade"&&sUT)row.upgrade_type=sUT;
+const cdFiltered=Object.fromEntries(Object.entries(sCd).filter(([_,v])=>v!==undefined&&v!==""&&v!==0));if(Object.keys(cdFiltered).length)row.category_details=cdFiltered;
 if(editId){const{error}=await supabase.from("perk_reports").update(row).eq("id",editId);if(error){showToast("Error: "+error.message,"error");sSub(false);return}showToast("Perk updated!")}else{const{error}=await supabase.from("perk_reports").insert(row);if(error){showToast("Error: "+error.message,"error");sSub(false);return}lastSub.current=now;showToast("Perk submitted! Thanks for contributing.")}
 resetForm();sSub(false);load()};
-const startEdit=p=>{setEditId(p.id);ssT(p.elite_tier);ssC(p.category);ssD(p.description);ssDate(p.stay_date?p.stay_date.slice(0,7):"");ssBT(p.booking_type||"");ssPC(p.promo_code||"");ssUT(p.upgrade_type||"");ssf(true);window.scrollTo({top:0,behavior:"smooth"})};
+const startEdit=p=>{setEditId(p.id);ssT(p.elite_tier);ssC(p.category);ssD(p.description);ssDate(p.stay_date?p.stay_date.slice(0,7):"");ssBT(p.booking_type||"");ssPC(p.promo_code||"");ssUT(p.upgrade_type||"");ssCd(p.category_details||{});ssf(true);window.scrollTo({top:0,behavior:"smooth"})};
 const deletePerk=async p=>{const{error}=await supabase.from("perk_reports").delete().eq("id",p.id);if(error){showToast("Error deleting: "+error.message,"error");return}showToast("Perk deleted.");load()};
 const subCmt=async()=>{if(!user){onNeedAuth();return}if(!cT||!cX.trim())return;if(cX.trim().length>MAX_TIP){showToast(`Tip must be ${MAX_TIP} characters or less`,"error");return}const{error}=await supabase.from("comments").insert({hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:cT,text:cX.trim()});if(error){showToast("Error: "+error.message,"error");return}scT("");scX("");showToast("Tip posted!");load()};
-const up=async p=>{if(!user){onNeedAuth();return}await supabase.from("perk_reports").insert({hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:p.elite_tier,category:p.category,description:p.description,booking_type:p.booking_type,promo_code:p.promo_code,upgrade_type:p.upgrade_type});showToast("Confirmation added!");load()};
+const up=async p=>{if(!user){onNeedAuth();return}await supabase.from("perk_reports").insert({hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:p.elite_tier,category:p.category,description:p.description,booking_type:p.booking_type,promo_code:p.promo_code,upgrade_type:p.upgrade_type,category_details:p.category_details});showToast("Confirmation added!");load()};
 const down=async(p,reason)=>{if(!user){onNeedAuth();return}await supabase.from("downvotes").insert({perk_report_id:p.id,user_id:user.id,reason}).catch(()=>{});showToast("Dispute recorded.");load()};
 const byTier={};const tierUp={ambassador:["ambassador","titanium","platinum"],titanium:["titanium","platinum"],platinum:["platinum"]};TIERS.forEach(t=>{const show=tierUp[t.key]||[t.key];byTier[t.key]=perks.filter(p=>show.includes(p.elite_tier))});const tr=perks.reduce((a,p)=>a+p.total_confirmations,0),catC=new Set(perks.map(p=>p.category)).size,score=pscore(tr,catC);
 if(err)return<div style={{textAlign:"center",padding:60}}><p style={{color:"#dc2626",fontFamily:FF,marginBottom:12}}>{err}</p><button onClick={load} style={BT()}>Retry</button><button onClick={onBack} style={{...BT("#e2e8f0","#64748b"),marginLeft:8}}>← Back</button></div>;
@@ -189,9 +245,10 @@ return<div><button onClick={onBack} style={{background:"#fff",border:"1px solid 
 {sf&&<div style={{background:"#f8fafc",borderRadius:10,padding:28,border:"1px solid #e2e8f0",marginBottom:24}}>
 <h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:20}}>{editId?"Edit Perk":"Add a Perk"}</h3>
 <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:16}}><div style={{flex:"1 1 160px"}}><label style={LS}>Tier</label><select value={sT} onChange={e=>ssT(e.target.value)} style={IS}><option value="">Select...</option>{TIERS.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}</select></div>
-<div style={{flex:"1 1 160px"}}><label style={LS}>Category</label><select value={sC} onChange={e=>ssC(e.target.value)} style={IS}><option value="">Select...</option>{CATS.map(c=><option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}</select></div>
+<div style={{flex:"1 1 160px"}}><label style={LS}>Category</label><select value={sC} onChange={e=>{ssC(e.target.value);ssCd({})}} style={IS}><option value="">Select...</option>{CATS.map(c=><option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}</select></div>
 <div style={{flex:"1 1 140px"}}><label style={LS}>When did you stay?</label><input type="month" value={sDate} onChange={e=>ssDate(e.target.value)} style={IS}/></div></div>
 {sC==="upgrade"&&<div style={{marginBottom:16}}><label style={LS}>Upgrade Type</label><select value={sUT} onChange={e=>ssUT(e.target.value)} style={IS}><option value="">Select type...</option>{UPGRADE_TYPES.map(u=><option key={u} value={u}>{u}</option>)}</select></div>}
+{sC&&<CategoryDetailFields category={sC} details={sCd} onChange={ssCd}/>}
 <div style={{marginBottom:16}}><label style={LS}>Describe the perk <CharCount val={sD} max={MAX_DESC}/></label><textarea value={sD} onChange={e=>ssD(e.target.value.slice(0,MAX_DESC))} placeholder="e.g., Free lattes at the lobby café" style={{...IS,minHeight:80,resize:"vertical"}} maxLength={MAX_DESC}/></div>
 <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:16}}><div style={{flex:"1 1 180px"}}><label style={LS}>Booking Type <span style={{fontWeight:400,textTransform:"none"}}>(optional)</span></label><select value={sBT} onChange={e=>ssBT(e.target.value)} style={IS}><option value="">Select...</option>{BOOKING_TYPES.map(b=><option key={b} value={b}>{b}</option>)}</select></div>
 <div style={{flex:"1 1 180px"}}><label style={LS}>Promo/Corporate Code <span style={{fontWeight:400,textTransform:"none"}}>(optional)</span></label><input value={sPC} onChange={e=>ssPC(e.target.value.slice(0,30))} placeholder="e.g. MMP, Corp code" style={IS} maxLength={30}/></div></div>
