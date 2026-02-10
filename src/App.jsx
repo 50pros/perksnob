@@ -70,6 +70,9 @@ const pscore=(r,c)=>Math.min(100,r*3+c*8);
 const mkSlug=n=>n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
 const FF="'DM Sans',sans-serif";const FD="'Playfair Display',serif";
 const sanitize=s=>{if(!s)return s;return s.replace(/<[^>]*>/g,"").replace(/javascript:/gi,"").replace(/data:/gi,"").replace(/on\w+\s*=/gi,"").replace(/https?:\/\/\S+/gi,"[link removed]").replace(/www\.\S+/gi,"[link removed]").replace(/\.com\/\S*/gi,"[link removed]").replace(/\.exe|\.zip|\.bat|\.cmd|\.msi|\.scr|\.ps1/gi,"[blocked]").trim()};
+const PROFANITY=["fuck","shit","ass","bitch","damn","crap","dick","cock","pussy","slut","whore","nigger","nigga","faggot","retard","cunt"];
+const hasProfanity=s=>{if(!s)return false;const w=s.toLowerCase();return PROFANITY.some(p=>w.includes(p))};
+const RESERVED_NAMES=["admin","administrator","marriott","marriottofficial","marriottglobal","marriottbonvoy","bonvoy","hilton","hyatt","ihg","perksnob","perksnobofficial","moderator","mod","staff","official","support","helpdesk","system","bot","ritzcarlton","stregis","westinhotels","sheratonhotels","jwmarriott","whotels","editionhotels"];
 const LS={display:"block",fontSize:10,fontWeight:600,color:"#94a3b8",fontFamily:FF,marginBottom:6,textTransform:"uppercase",letterSpacing:1.2};
 const IS={width:"100%",padding:"12px 14px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:14,fontFamily:FF,background:"#fff",color:"#0f172a",outline:"none",boxSizing:"border-box",transition:"border-color 0.15s"};
 const BT=(bg="#0f172a",fg="#fff")=>({background:bg,color:fg,border:"none",borderRadius:6,padding:"10px 22px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF,letterSpacing:0.2,transition:"all 0.15s"});
@@ -114,9 +117,9 @@ const tags=fields.map(f=>{const v=details[f.key];if(!v)return null;if(f.type==="
 if(!tags.length)return null;
 return<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>{tags.map((t,i)=><span key={i} style={{...TAG("#f0f9ff","#0369a1"),fontSize:9,gap:3}}><span style={{opacity:0.7}}>{t.label}:</span> {t.value}</span>)}</div>}
 
-function PerkCard({perk,user,onVote,onEdit,onDelete,showHotel}){const cat=gc(perk.category),stay=fsd(perk.latest_stay);
+function PerkCard({perk,user,onVote,onEdit,onDelete,onFlag,showHotel}){const cat=gc(perk.category),stay=fsd(perk.latest_stay);
 const isOwner=user&&perk.user_id===user.id;const hasPromo=perk.promo_code||perk.booking_type==="Employee (MMF, MMP, etc.)"||perk.booking_type==="Employee (MMP)"||perk.booking_type==="Corporate"||perk.booking_type==="3rd Party (e.g. Priceline)";
-const score=(perk.upvotes||0)-(perk.downvotes||0);const myVote=perk.my_vote||0;
+const score=(perk.upvotes||0)-(perk.downvotes||0);const myVote=perk.my_vote||0;const[flagging,setFlagging]=useState(false);
 return<div style={{display:"flex",gap:14,padding:"14px 0",borderBottom:"1px solid #f1f5f9"}}>
 <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:36}}>
 {user?<button onClick={()=>onVote(perk,myVote===1?0:1)} aria-label="Upvote" style={{background:"none",border:"none",cursor:"pointer",fontSize:16,padding:0,color:myVote===1?"#059669":"#cbd5e1",transition:"color 0.15s"}}>▲</button>:<span style={{fontSize:16,color:"#cbd5e1"}}>▲</span>}
@@ -130,13 +133,16 @@ return<div style={{display:"flex",gap:14,padding:"14px 0",borderBottom:"1px soli
 {perk.booking_type&&<span style={{...TAG("#f0fdf4","#15803d")}}>{perk.booking_type}</span>}
 {hasPromo&&<span style={{...TAG("#fefce8","#a16207"),cursor:"help"}} title="Booked with a promo/corporate/employee code — perks received may differ from standard elite bookings">⚠️ {perk.promo_code||"Promo/Corp rate"}</span>}
 {stay&&<span style={{fontSize:9,color:"#94a3b8",fontFamily:FF,background:"#f8fafc",padding:"2px 6px",borderRadius:3}}>Stay: {stay}</span>}
+{perk.edit_count>0&&<span style={{fontSize:9,color:"#94a3b8",fontFamily:FF,fontStyle:"italic"}} title={perk.last_edited_at?`Last edited ${new Date(perk.last_edited_at).toLocaleDateString()}`:""}>edited{perk.edit_count>1?` ×${perk.edit_count}`:""}</span>}
 <span style={{fontSize:9,color:"#94a3b8",fontFamily:FF}}>{perk.display_name}</span></div>
 <div style={{fontSize:13,color:"#475569",lineHeight:1.6,fontFamily:FF}}>{perk.summary||perk.description}</div>
 <CategoryDetailTags category={perk.category} details={perk.category_details}/>
-{isOwner&&<div style={{marginTop:6,display:"flex",gap:6}}>
-{onEdit&&<button onClick={()=>onEdit(perk)} aria-label="Edit perk" style={{background:"none",border:"1px solid #dbeafe",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",color:"#2563eb",fontFamily:FF,fontWeight:600}}>Edit</button>}
-{onDelete&&<button onClick={()=>{if(window.confirm("Delete this perk report?"))onDelete(perk)}} aria-label="Delete perk" style={{background:"none",border:"1px solid #fecaca",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",color:"#dc2626",fontFamily:FF}}>Delete</button>}
-</div>}
+<div style={{marginTop:6,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+{isOwner&&onEdit&&<button onClick={()=>onEdit(perk)} aria-label="Edit perk" style={{background:"none",border:"1px solid #dbeafe",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",color:"#2563eb",fontFamily:FF,fontWeight:600}}>Edit</button>}
+{isOwner&&onDelete&&<button onClick={()=>{if(window.confirm("Delete this perk report?"))onDelete(perk)}} aria-label="Delete perk" style={{background:"none",border:"1px solid #fecaca",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",color:"#dc2626",fontFamily:FF}}>Delete</button>}
+{user&&!isOwner&&!flagging&&<button onClick={()=>setFlagging(true)} aria-label="Report" style={{background:"none",border:"none",padding:"2px 4px",fontSize:10,cursor:"pointer",color:"#cbd5e1",fontFamily:FF}}>🚩</button>}
+{flagging&&<div style={{display:"flex",gap:4,alignItems:"center"}}>{[{k:"spam",l:"Spam"},{k:"offensive",l:"Offensive"},{k:"misinformation",l:"Inaccurate"}].map(r=><button key={r.k} onClick={async()=>{const{error}=await supabase.from("content_flags").insert({reporter_id:user.id,target_type:"perk_report",target_id:perk.id,reason:r.k});if(error?.code==="23505")showToast("Already flagged","error");else if(error)showToast("Error flagging","error");else showToast("Flagged for review. Thank you.");setFlagging(false)}} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:4,padding:"2px 8px",fontSize:9,cursor:"pointer",color:"#dc2626",fontFamily:FF}}>{r.l}</button>)}<button onClick={()=>setFlagging(false)} style={{background:"none",border:"none",fontSize:10,cursor:"pointer",color:"#94a3b8"}}>✕</button></div>}
+</div>
 </div></div>}
 
 function TierSection({tier,perks,user,onVote,onEdit,onDelete}){const t=gt(tier);if(!perks?.length)return<div style={{padding:20,borderRadius:8,background:"#fafbfc",border:"1px solid #f1f5f9",marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><span style={{width:6,height:6,borderRadius:"50%",background:t.color}}/><span style={{fontSize:12,fontWeight:700,color:t.color,fontFamily:FF}}>{t.label}</span></div><div style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>No perks reported yet. Be the first to share what you received!</div></div>;
@@ -156,12 +162,14 @@ function Footer(){return<footer style={{background:"#0f172a",borderTop:"1px soli
 
 function AuthModal({onClose,onAuth}){const[mode,sMode]=useState("signin"),[em,se]=useState(""),[pw,sp]=useState(""),[nm,sn]=useState(""),[ld,sl]=useState(false),[er,sr]=useState(""),[msg,smsg]=useState("");
 const go=async()=>{sl(true);sr("");smsg("");try{if(mode==="signup"){if(!nm.trim()||nm.trim().length<2){throw new Error("Display name must be at least 2 characters")}if(nm.trim().length>MAX_NAME){throw new Error(`Display name must be ${MAX_NAME} characters or less`)}
+if(RESERVED_NAMES.includes(nm.trim().toLowerCase())){throw new Error("That display name is reserved. Please choose another.")}
+if(hasProfanity(nm)){throw new Error("Display name contains inappropriate language. Please choose another.")}
 const{data:existingName}=await supabase.from("perk_reports").select("display_name").eq("display_name",nm.trim()).limit(1);
 const{data:existingCmt}=await supabase.from("comments").select("display_name").eq("display_name",nm.trim()).limit(1);
 if((existingName&&existingName.length>0)||(existingCmt&&existingCmt.length>0)){throw new Error("That display name is already taken. Please choose another.")}
 const{data:signUpData,error}=await supabase.auth.signUp({email:em,password:pw,options:{data:{display_name:sanitize(nm)}}});if(error)throw error;
-const u=signUpData?.user;if(u&&(u.identities?.length===0||(u.created_at&&(Date.now()-new Date(u.created_at).getTime())>5000))){throw new Error("An account with this email already exists. Try signing in instead.")}
-smsg("Check your email to confirm your account!");sMode("done")}else if(mode==="signin"){const{error}=await supabase.auth.signInWithPassword({email:em,password:pw});if(error)throw error;showToast("Signed in successfully.");onAuth();onClose()}else if(mode==="reset"){const{error}=await supabase.auth.resetPasswordForEmail(em,{redirectTo:window.location.origin});if(error)throw error;smsg("Check your email for a password reset link.")}}catch(e){sr(e.message)}sl(false)};
+const u=signUpData?.user;if(u&&(u.identities?.length===0||(u.created_at&&(Date.now()-new Date(u.created_at).getTime())>5000))){throw new Error("Unable to create account. Please try a different email or sign in.")}
+smsg("Check your email to confirm your account!");sMode("done")}else if(mode==="signin"){const{error}=await supabase.auth.signInWithPassword({email:em,password:pw});if(error)throw error;showToast("Signed in successfully.");onAuth();onClose()}else if(mode==="reset"){const{error}=await supabase.auth.resetPasswordForEmail(em,{redirectTo:window.location.origin});if(error)throw error;smsg("If an account exists with this email, you'll receive a reset link.")}}catch(e){sr(e.message)}sl(false)};
 return<div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(8px)"}} onClick={onClose}><div style={{background:"#fff",borderRadius:12,padding:40,maxWidth:380,width:"100%",boxShadow:"0 25px 60px rgba(0,0,0,0.15)"}} onClick={e=>e.stopPropagation()} role="dialog" aria-label={mode==="signup"?"Create account":mode==="reset"?"Reset password":"Sign in"}>
 <h2 style={{fontSize:28,fontFamily:FD,fontWeight:700,marginBottom:4,color:"#0f172a"}}>{mode==="signup"?"Create Account":mode==="reset"?"Reset Password":mode==="done"?"Check Your Email":"Welcome back"}</h2>
 <p style={{fontSize:13,color:"#94a3b8",marginBottom:28,fontFamily:FF}}>{mode==="signup"?"Join the community":mode==="reset"?"Enter your email to reset":mode==="done"?"":"Sign in to contribute"}</p>
@@ -198,7 +206,7 @@ return<div><div style={{background:"#fff",borderRadius:10,padding:28,border:"1px
 <div style={{flex:"1 1 180px"}}><label style={LS}>Category</label><select value={cat} onChange={e=>sc(e.target.value)} style={IS}><option value="">Any</option>{CATS.map(c=><option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}</select></div>
 <button onClick={go} style={BT()}>Search</button></div></div>
 {err&&<div role="alert" style={{background:"#fef2f2",color:"#dc2626",padding:"12px 16px",borderRadius:8,fontSize:13,fontFamily:FF,marginBottom:16}}>{err} <button onClick={go} style={{background:"none",border:"none",color:"#dc2626",fontWeight:700,cursor:"pointer",textDecoration:"underline",fontFamily:FF}}>Retry</button></div>}
-{ld?<div style={{textAlign:"center",padding:40,color:"#94a3b8"}}>Searching...</div>:done&&<>{res.length>0&&<div style={{fontSize:12,color:"#94a3b8",fontFamily:FF,marginBottom:12}}>{res.length} result{res.length!==1?"s":""}</div>}{res.map((p,i)=><PerkCard key={i} perk={p} user={user} onUp={()=>{}} onDown={()=>{}} showHotel/>)}{!res.length&&<div style={{textAlign:"center",padding:40,color:"#94a3b8"}}>No perks found matching your criteria.</div>}</>}</div>}
+{ld?<div style={{textAlign:"center",padding:40,color:"#94a3b8"}}>Searching...</div>:done&&<>{res.length>0&&<div style={{fontSize:12,color:"#94a3b8",fontFamily:FF,marginBottom:12}}>{res.length} result{res.length!==1?"s":""}</div>}{res.map((p,i)=><PerkCard key={i} perk={p} user={user} onVote={()=>{}} showHotel/>)}{!res.length&&<div style={{textAlign:"center",padding:40,color:"#94a3b8"}}>No perks found matching your criteria.</div>}</>}</div>}
 
 function Comparison({hotels,onClose}){const[sel,ss]=useState(["",""]),[data,sd]=useState({}),[ld,sl]=useState(false);
 const load=async(i,id)=>{const ns=[...sel];ns[i]=id;ss(ns);if(!id||data[id])return;sl(true);const{data:pd}=await supabase.from("perk_reports").select("*").eq("hotel_id",id);const pm={};(pd||[]).forEach(p=>{const k=`${p.elite_tier}|${p.category}|${p.description}`;if(!pm[k])pm[k]={...p,total_confirmations:1,summary:p.description};else pm[k].total_confirmations+=1});sd(d=>({...d,[id]:Object.values(pm)}));sl(false)};
@@ -252,7 +260,7 @@ const perkIds=myPerks.map(p=>p.id);
 let upvoteCount=0;if(perkIds.length){const{count}=await supabase.from("perk_votes").select("*",{count:"exact",head:true}).in("perk_id",perkIds).eq("vote",1);upvoteCount=count||0}
 setStats({reports:myPerks.length,hotels:hotelSet.size,upvotes:upvoteCount,detailed});
 sld(false)})()},[userId]);
-const save=async()=>{const cleanBio=sanitize(bio);const cleanReddit=reddit.trim().replace(/[^a-zA-Z0-9_-]/g,"").slice(0,30);const{error}=await supabase.from("user_profiles").upsert({id:userId,display_name:profile?.display_name,bio:cleanBio||null,elite_tier:tier||null,elite_since:since||null,reddit_username:cleanReddit||null});
+const save=async()=>{if(hasProfanity(bio)){showToast("Bio contains inappropriate language. Please revise.","error");return}const cleanBio=sanitize(bio);const cleanReddit=reddit.trim().replace(/[^a-zA-Z0-9_-]/g,"").slice(0,30);const{error}=await supabase.from("user_profiles").upsert({id:userId,display_name:profile?.display_name,bio:cleanBio||null,elite_tier:tier||null,elite_since:since||null,reddit_username:cleanReddit||null});
 if(error){showToast("Error saving: "+error.message,"error");return}setProfile({...profile,bio:cleanBio,elite_tier:tier,elite_since:since,reddit_username:cleanReddit});setEditing(false);showToast("Profile saved!")};
 const badges=getBadges(stats);const tb=topBadge(stats);const dn=profile?.display_name||"User";
 const tierInfo=tier?gt(tier):null;
@@ -322,7 +330,7 @@ const subPerk=async()=>{if(!user){onNeedAuth();return}
 const valid=entries.filter(e=>e.category&&e.description.trim());
 if(!sT){showToast("Please select your tier","error");return}
 if(!valid.length){showToast("Please add at least one category with a description","error");return}
-for(const e of valid){if(e.description.trim().length>MAX_DESC){showToast(`Description must be ${MAX_DESC} characters or less`,"error");return}}
+for(const e of valid){if(e.description.trim().length>MAX_DESC){showToast(`Description must be ${MAX_DESC} characters or less`,"error");return}if(hasProfanity(e.description)){showToast("Your report contains inappropriate language. Please revise.","error");return}}
 const now=Date.now();if(!editId&&now-lastSub.current<10000){showToast("Please wait a few seconds between submissions","error");return}
 sSub(true);
 if(editId){const e=valid[0];const row={hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:sT,category:e.category,description:sanitize(e.description)};if(sDate)row.stay_date=sDate+"-01";if(sBT)row.booking_type=sBT;if(sPC.trim())row.promo_code=sanitize(sPC);if(e.category==="upgrade"&&e.upgrade_type)row.upgrade_type=e.upgrade_type;
@@ -334,12 +342,15 @@ const{error}=await supabase.from("perk_reports").insert(rows);if(error){showToas
 resetForm();sSub(false);load()};
 const startEdit=p=>{setEditId(p.id);ssT(p.elite_tier);setEntries([{category:p.category,description:p.description,upgrade_type:p.upgrade_type||"",category_details:p.category_details||{}}]);ssDate(p.stay_date?p.stay_date.slice(0,7):"");ssBT(p.booking_type||"");ssPC(p.promo_code||"");ssf(true);window.scrollTo({top:0,behavior:"smooth"})};
 const deletePerk=async p=>{const{error}=await supabase.from("perk_reports").delete().eq("id",p.id);if(error){showToast("Error deleting: "+error.message,"error");return}showToast("Perk deleted.");load()};
-const subCmt=async()=>{if(!user){onNeedAuth();return}if(!cT||!cX.trim())return;if(cX.trim().length>MAX_TIP){showToast(`Tip must be ${MAX_TIP} characters or less`,"error");return}const{error}=await supabase.from("comments").insert({hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:cT,text:sanitize(cX)});if(error){showToast("Error: "+error.message,"error");return}scT("");scX("");showToast("Tip posted!");load()};
+const subCmt=async()=>{if(!user){onNeedAuth();return}if(!cT||!cX.trim())return;if(cX.trim().length>MAX_TIP){showToast(`Tip must be ${MAX_TIP} characters or less`,"error");return}if(hasProfanity(cX)){showToast("Your tip contains inappropriate language. Please revise.","error");return}const{error}=await supabase.from("comments").insert({hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:cT,text:sanitize(cX)});if(error){showToast("Error: "+error.message,"error");return}scT("");scX("");showToast("Tip posted!");load()};
+const lastVote=useRef(0);
 const vote=async(p,val)=>{if(!user){onNeedAuth();return}
+if(p.user_id===user.id){showToast("You can't vote on your own report","error");return}
+const now=Date.now();if(now-lastVote.current<2000){showToast("Please wait between votes","error");return}lastVote.current=now;
 if(val===0){await supabase.from("perk_votes").delete().eq("perk_id",p.id).eq("user_id",user.id);showToast("Vote removed.")}
-else{await supabase.from("perk_votes").upsert({perk_id:p.id,user_id:user.id,vote:val},{onConflict:"perk_id,user_id"});showToast(val===1?"Upvoted!":"Downvoted.")}
+else{const{error}=await supabase.from("perk_votes").upsert({perk_id:p.id,user_id:user.id,vote:val},{onConflict:"perk_id,user_id"});if(error){showToast(error.message.includes("self")||error.message.includes("own")?"You can't vote on your own report":error.message,"error");return}showToast(val===1?"Upvoted!":"Downvoted.")}
 load()};
-const byTier={};const tierUp={ambassador:["ambassador","titanium","platinum"],titanium:["titanium","platinum"],platinum:["platinum"]};TIERS.forEach(t=>{const show=tierUp[t.key]||[t.key];byTier[t.key]=perks.filter(p=>show.includes(p.elite_tier))});const tr=perks.reduce((a,p)=>a+p.total_confirmations,0),catC=new Set(perks.map(p=>p.category)).size,score=pscore(tr,catC);
+const byTier={};const tierUp={ambassador:["ambassador","titanium","platinum"],titanium:["titanium","platinum"],platinum:["platinum"]};TIERS.forEach(t=>{const show=tierUp[t.key]||[t.key];byTier[t.key]=perks.filter(p=>show.includes(p.elite_tier))});const tr=perks.length,catC=new Set(perks.map(p=>p.category)).size,score=pscore(tr,catC);
 if(err)return<div style={{textAlign:"center",padding:60}}><p style={{color:"#dc2626",fontFamily:FF,marginBottom:12}}>{err}</p><button onClick={load} style={BT()}>Retry</button><button onClick={onBack} style={{...BT("#e2e8f0","#64748b"),marginLeft:8}}>← Back</button></div>;
 return<div><button onClick={onBack} style={{background:"#fff",border:"1px solid #e2e8f0",cursor:"pointer",fontSize:13,color:"#334155",fontWeight:600,fontFamily:FF,padding:"8px 16px",marginBottom:24,borderRadius:6}}>← Back</button>
 <div style={{background:"#0f172a",borderRadius:12,padding:"36px 32px",marginBottom:28,color:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
@@ -392,7 +403,10 @@ function HotelCard({hotel,perkCounts,score,onClick}){const c=perkCounts[hotel.id
 
 function AddHotelModal({onClose,user,onNeedAuth,onAdded,existingHotels}){const[name,sn]=useState(""),[brand,sb]=useState(""),[loc,sloc]=useState(""),[sub,ss2]=useState(false),[sim,ssim]=useState([]);
 const ck=v=>{sn(v);if(v.trim().length<3){ssim([]);return}const w=v.toLowerCase().replace(/[^a-z0-9\s]/g,"").split(/\s+/).filter(x=>x.length>2);if(!w.length){ssim([]);return}ssim(existingHotels.filter(h=>{const n=h.name.toLowerCase().replace(/[^a-z0-9\s]/g,"");return w.some(x=>n.includes(x))}).slice(0,5))};
-const go=async()=>{if(!user){onNeedAuth();onClose();return}if(!name.trim()||!brand||!loc.trim())return;ss2(true);const slug=mkSlug(name);const{error}=await supabase.from("hotels").insert({name:sanitize(name),brand,location:sanitize(loc),slug,status:"pending",submitted_by:user.id});ss2(false);if(error){showToast("Error: "+error.message,"error");return}showToast("Hotel submitted for review!");onAdded();onClose()};
+const go=async()=>{if(!user){onNeedAuth();onClose();return}if(!name.trim()||!brand||!loc.trim())return;if(hasProfanity(name)||hasProfanity(loc)){showToast("Hotel name or location contains inappropriate language.","error");return}ss2(true);
+const{count}=await supabase.from("hotels").select("*",{count:"exact",head:true}).eq("submitted_by",user.id).eq("status","pending");
+if(count>=5){showToast("You have too many pending hotel submissions. Please wait for review.","error");ss2(false);return}
+const slug=mkSlug(name);const{error}=await supabase.from("hotels").insert({name:sanitize(name),brand,location:sanitize(loc),slug,status:"pending",submitted_by:user.id});ss2(false);if(error){showToast("Error: "+error.message,"error");return}showToast("Hotel submitted for review!");onAdded();onClose()};
 return<div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(8px)"}} onClick={onClose}><div style={{background:"#fff",borderRadius:12,padding:40,maxWidth:450,width:"100%",boxShadow:"0 25px 60px rgba(0,0,0,0.15)"}} onClick={e=>e.stopPropagation()} role="dialog" aria-label="Add a hotel">
 <h2 style={{fontSize:24,fontFamily:FD,fontWeight:700,marginBottom:4,color:"#0f172a"}}>Add a Hotel</h2><p style={{fontSize:13,color:"#94a3b8",marginBottom:24,fontFamily:FF}}>Can't find your property? Submit it for review.</p>
 <div style={{marginBottom:14}}><label style={LS}>Hotel Name</label><input value={name} onChange={e=>ck(e.target.value)} placeholder="The Westin Kierland Resort & Spa" style={IS} autoFocus/>
