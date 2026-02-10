@@ -69,6 +69,7 @@ const dname=u=>u?.user_metadata?.display_name||u?.email?.split("@")[0]||"Anonymo
 const pscore=(r,c)=>Math.min(100,r*3+c*8);
 const mkSlug=n=>n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
 const FF="'DM Sans',sans-serif";const FD="'Playfair Display',serif";
+const sanitize=s=>{if(!s)return s;return s.replace(/<[^>]*>/g,"").replace(/javascript:/gi,"").replace(/data:/gi,"").replace(/on\w+\s*=/gi,"").replace(/https?:\/\/\S+/gi,"[link removed]").replace(/www\.\S+/gi,"[link removed]").replace(/\.com\/\S*/gi,"[link removed]").replace(/\.exe|\.zip|\.bat|\.cmd|\.msi|\.scr|\.ps1/gi,"[blocked]").trim()};
 const LS={display:"block",fontSize:10,fontWeight:600,color:"#94a3b8",fontFamily:FF,marginBottom:6,textTransform:"uppercase",letterSpacing:1.2};
 const IS={width:"100%",padding:"12px 14px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:14,fontFamily:FF,background:"#fff",color:"#0f172a",outline:"none",boxSizing:"border-box",transition:"border-color 0.15s"};
 const BT=(bg="#0f172a",fg="#fff")=>({background:bg,color:fg,border:"none",borderRadius:6,padding:"10px 22px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF,letterSpacing:0.2,transition:"all 0.15s"});
@@ -158,7 +159,7 @@ const go=async()=>{sl(true);sr("");smsg("");try{if(mode==="signup"){if(!nm.trim(
 const{data:existingName}=await supabase.from("perk_reports").select("display_name").eq("display_name",nm.trim()).limit(1);
 const{data:existingCmt}=await supabase.from("comments").select("display_name").eq("display_name",nm.trim()).limit(1);
 if((existingName&&existingName.length>0)||(existingCmt&&existingCmt.length>0)){throw new Error("That display name is already taken. Please choose another.")}
-const{data:signUpData,error}=await supabase.auth.signUp({email:em,password:pw,options:{data:{display_name:nm.trim()}}});if(error)throw error;
+const{data:signUpData,error}=await supabase.auth.signUp({email:em,password:pw,options:{data:{display_name:sanitize(nm)}}});if(error)throw error;
 const u=signUpData?.user;if(u&&(u.identities?.length===0||(u.created_at&&(Date.now()-new Date(u.created_at).getTime())>5000))){throw new Error("An account with this email already exists. Try signing in instead.")}
 smsg("Check your email to confirm your account!");sMode("done")}else if(mode==="signin"){const{error}=await supabase.auth.signInWithPassword({email:em,password:pw});if(error)throw error;showToast("Signed in successfully.");onAuth();onClose()}else if(mode==="reset"){const{error}=await supabase.auth.resetPasswordForEmail(em,{redirectTo:window.location.origin});if(error)throw error;smsg("Check your email for a password reset link.")}}catch(e){sr(e.message)}sl(false)};
 return<div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(8px)"}} onClick={onClose}><div style={{background:"#fff",borderRadius:12,padding:40,maxWidth:380,width:"100%",boxShadow:"0 25px 60px rgba(0,0,0,0.15)"}} onClick={e=>e.stopPropagation()} role="dialog" aria-label={mode==="signup"?"Create account":mode==="reset"?"Reset password":"Sign in"}>
@@ -251,8 +252,8 @@ const perkIds=myPerks.map(p=>p.id);
 let upvoteCount=0;if(perkIds.length){const{count}=await supabase.from("perk_votes").select("*",{count:"exact",head:true}).in("perk_id",perkIds).eq("vote",1);upvoteCount=count||0}
 setStats({reports:myPerks.length,hotels:hotelSet.size,upvotes:upvoteCount,detailed});
 sld(false)})()},[userId]);
-const save=async()=>{const{error}=await supabase.from("user_profiles").upsert({id:userId,display_name:profile?.display_name,bio:bio.trim()||null,elite_tier:tier||null,elite_since:since||null,reddit_username:reddit.trim()||null});
-if(error){showToast("Error saving: "+error.message,"error");return}setProfile({...profile,bio:bio.trim(),elite_tier:tier,elite_since:since,reddit_username:reddit.trim()});setEditing(false);showToast("Profile saved!")};
+const save=async()=>{const cleanBio=sanitize(bio);const cleanReddit=reddit.trim().replace(/[^a-zA-Z0-9_-]/g,"").slice(0,30);const{error}=await supabase.from("user_profiles").upsert({id:userId,display_name:profile?.display_name,bio:cleanBio||null,elite_tier:tier||null,elite_since:since||null,reddit_username:cleanReddit||null});
+if(error){showToast("Error saving: "+error.message,"error");return}setProfile({...profile,bio:cleanBio,elite_tier:tier,elite_since:since,reddit_username:cleanReddit});setEditing(false);showToast("Profile saved!")};
 const badges=getBadges(stats);const tb=topBadge(stats);const dn=profile?.display_name||"User";
 const tierInfo=tier?gt(tier):null;
 const hotelMap={};hotels.forEach(h=>{hotelMap[h.id]=h});
@@ -324,16 +325,16 @@ if(!valid.length){showToast("Please add at least one category with a description
 for(const e of valid){if(e.description.trim().length>MAX_DESC){showToast(`Description must be ${MAX_DESC} characters or less`,"error");return}}
 const now=Date.now();if(!editId&&now-lastSub.current<10000){showToast("Please wait a few seconds between submissions","error");return}
 sSub(true);
-if(editId){const e=valid[0];const row={hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:sT,category:e.category,description:e.description.trim()};if(sDate)row.stay_date=sDate+"-01";if(sBT)row.booking_type=sBT;if(sPC.trim())row.promo_code=sPC.trim();if(e.category==="upgrade"&&e.upgrade_type)row.upgrade_type=e.upgrade_type;
+if(editId){const e=valid[0];const row={hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:sT,category:e.category,description:sanitize(e.description)};if(sDate)row.stay_date=sDate+"-01";if(sBT)row.booking_type=sBT;if(sPC.trim())row.promo_code=sanitize(sPC);if(e.category==="upgrade"&&e.upgrade_type)row.upgrade_type=e.upgrade_type;
 const cd=Object.fromEntries(Object.entries(e.category_details||{}).filter(([_,v])=>v!==undefined&&v!==""&&v!==0));if(Object.keys(cd).length)row.category_details=cd;
 const{error}=await supabase.from("perk_reports").update(row).eq("id",editId);if(error){showToast("Error: "+error.message,"error");sSub(false);return}showToast("Perk updated!")}
-else{const rows=valid.map(e=>{const row={hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:sT,category:e.category,description:e.description.trim()};if(sDate)row.stay_date=sDate+"-01";if(sBT)row.booking_type=sBT;if(sPC.trim())row.promo_code=sPC.trim();if(e.category==="upgrade"&&e.upgrade_type)row.upgrade_type=e.upgrade_type;
+else{const rows=valid.map(e=>{const row={hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:sT,category:e.category,description:sanitize(e.description)};if(sDate)row.stay_date=sDate+"-01";if(sBT)row.booking_type=sBT;if(sPC.trim())row.promo_code=sanitize(sPC);if(e.category==="upgrade"&&e.upgrade_type)row.upgrade_type=e.upgrade_type;
 const cd=Object.fromEntries(Object.entries(e.category_details||{}).filter(([_,v])=>v!==undefined&&v!==""&&v!==0));if(Object.keys(cd).length)row.category_details=cd;return row});
 const{error}=await supabase.from("perk_reports").insert(rows);if(error){showToast("Error: "+error.message,"error");sSub(false);return}lastSub.current=now;showToast(`${rows.length} perk${rows.length>1?"s":""} submitted! Thanks for contributing.`)}
 resetForm();sSub(false);load()};
 const startEdit=p=>{setEditId(p.id);ssT(p.elite_tier);setEntries([{category:p.category,description:p.description,upgrade_type:p.upgrade_type||"",category_details:p.category_details||{}}]);ssDate(p.stay_date?p.stay_date.slice(0,7):"");ssBT(p.booking_type||"");ssPC(p.promo_code||"");ssf(true);window.scrollTo({top:0,behavior:"smooth"})};
 const deletePerk=async p=>{const{error}=await supabase.from("perk_reports").delete().eq("id",p.id);if(error){showToast("Error deleting: "+error.message,"error");return}showToast("Perk deleted.");load()};
-const subCmt=async()=>{if(!user){onNeedAuth();return}if(!cT||!cX.trim())return;if(cX.trim().length>MAX_TIP){showToast(`Tip must be ${MAX_TIP} characters or less`,"error");return}const{error}=await supabase.from("comments").insert({hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:cT,text:cX.trim()});if(error){showToast("Error: "+error.message,"error");return}scT("");scX("");showToast("Tip posted!");load()};
+const subCmt=async()=>{if(!user){onNeedAuth();return}if(!cT||!cX.trim())return;if(cX.trim().length>MAX_TIP){showToast(`Tip must be ${MAX_TIP} characters or less`,"error");return}const{error}=await supabase.from("comments").insert({hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:cT,text:sanitize(cX)});if(error){showToast("Error: "+error.message,"error");return}scT("");scX("");showToast("Tip posted!");load()};
 const vote=async(p,val)=>{if(!user){onNeedAuth();return}
 if(val===0){await supabase.from("perk_votes").delete().eq("perk_id",p.id).eq("user_id",user.id);showToast("Vote removed.")}
 else{await supabase.from("perk_votes").upsert({perk_id:p.id,user_id:user.id,vote:val},{onConflict:"perk_id,user_id"});showToast(val===1?"Upvoted!":"Downvoted.")}
@@ -391,7 +392,7 @@ function HotelCard({hotel,perkCounts,score,onClick}){const c=perkCounts[hotel.id
 
 function AddHotelModal({onClose,user,onNeedAuth,onAdded,existingHotels}){const[name,sn]=useState(""),[brand,sb]=useState(""),[loc,sloc]=useState(""),[sub,ss2]=useState(false),[sim,ssim]=useState([]);
 const ck=v=>{sn(v);if(v.trim().length<3){ssim([]);return}const w=v.toLowerCase().replace(/[^a-z0-9\s]/g,"").split(/\s+/).filter(x=>x.length>2);if(!w.length){ssim([]);return}ssim(existingHotels.filter(h=>{const n=h.name.toLowerCase().replace(/[^a-z0-9\s]/g,"");return w.some(x=>n.includes(x))}).slice(0,5))};
-const go=async()=>{if(!user){onNeedAuth();onClose();return}if(!name.trim()||!brand||!loc.trim())return;ss2(true);const slug=mkSlug(name);const{error}=await supabase.from("hotels").insert({name:name.trim(),brand,location:loc.trim(),slug,status:"pending",submitted_by:user.id});ss2(false);if(error){showToast("Error: "+error.message,"error");return}showToast("Hotel submitted for review!");onAdded();onClose()};
+const go=async()=>{if(!user){onNeedAuth();onClose();return}if(!name.trim()||!brand||!loc.trim())return;ss2(true);const slug=mkSlug(name);const{error}=await supabase.from("hotels").insert({name:sanitize(name),brand,location:sanitize(loc),slug,status:"pending",submitted_by:user.id});ss2(false);if(error){showToast("Error: "+error.message,"error");return}showToast("Hotel submitted for review!");onAdded();onClose()};
 return<div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(8px)"}} onClick={onClose}><div style={{background:"#fff",borderRadius:12,padding:40,maxWidth:450,width:"100%",boxShadow:"0 25px 60px rgba(0,0,0,0.15)"}} onClick={e=>e.stopPropagation()} role="dialog" aria-label="Add a hotel">
 <h2 style={{fontSize:24,fontFamily:FD,fontWeight:700,marginBottom:4,color:"#0f172a"}}>Add a Hotel</h2><p style={{fontSize:13,color:"#94a3b8",marginBottom:24,fontFamily:FF}}>Can't find your property? Submit it for review.</p>
 <div style={{marginBottom:14}}><label style={LS}>Hotel Name</label><input value={name} onChange={e=>ck(e.target.value)} placeholder="The Westin Kierland Resort & Spa" style={IS} autoFocus/>
