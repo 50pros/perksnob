@@ -10,6 +10,7 @@ const ta=d=>{const s=Math.floor((Date.now()-new Date(d))/1000);if(s<60)return"ju
 const fsd=d=>{if(!d)return null;return new Date(d+"T00:00:00").toLocaleDateString("en-US",{year:"numeric",month:"short"})};
 const dname=u=>u?.user_metadata?.display_name||u?.email?.split("@")[0]||"Anonymous";
 const pscore=(r,c)=>Math.min(100,r*3+c*8);
+const mkSlug=n=>n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
 const FF="'DM Sans',sans-serif";const FD="'Playfair Display',serif";
 const LS={display:"block",fontSize:10,fontWeight:600,color:"#94a3b8",fontFamily:FF,marginBottom:6,textTransform:"uppercase",letterSpacing:1.2};
 const IS={width:"100%",padding:"12px 14px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:14,fontFamily:FF,background:"#fff",color:"#0f172a",outline:"none",boxSizing:"border-box"};
@@ -17,6 +18,9 @@ const BT=(bg="#0f172a",fg="#fff")=>({background:bg,color:fg,border:"none",border
 
 /* Routing */
 function usePath(){const[path,setPath]=useState(window.location.pathname);useEffect(()=>{const h=()=>setPath(window.location.pathname);window.addEventListener("popstate",h);return()=>window.removeEventListener("popstate",h)},[]);const nav=p=>{window.history.pushState({},"",p);setPath(p)};return[path,nav]}
+
+/* Dynamic title */
+function useTitle(t){useEffect(()=>{document.title=t},[t])}
 
 function ScoreBadge({score}){const c=score>=70?"#059669":score>=40?"#d97706":"#dc2626",bg=score>=70?"#ecfdf5":score>=40?"#fffbeb":"#fef2f2";return<div style={{display:"inline-flex",alignItems:"center",gap:4,background:bg,border:`1px solid ${c}22`,borderRadius:6,padding:"3px 10px"}}><span style={{fontSize:15,fontWeight:700,color:c,fontFamily:FF}}>{score}</span><span style={{fontSize:9,color:c,fontFamily:FF,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5}}>score</span></div>}
 
@@ -111,6 +115,7 @@ return<div><button onClick={onClose} style={{background:"#fff",border:"1px solid
 
 function HotelDetail({hotel,user,onBack,onNeedAuth}){const[sf,ssf]=useState(false),[perks,sp]=useState([]),[cmts,sc]=useState([]),[ld,sl]=useState(true);
 const[sT,ssT]=useState(""),[sC,ssC]=useState(""),[sD,ssD]=useState(""),[sDate,ssDate]=useState(""),[sub,sSub]=useState(false);const[cT,scT]=useState(""),[cX,scX]=useState("");
+useTitle(`${hotel.name} — Elite Perk Benefits | PerkSnob`);
 const load=useCallback(async()=>{sl(true);const{data:pd}=await supabase.from("perk_reports").select("*").eq("hotel_id",hotel.id).order("created_at",{ascending:false});
 const pm={};(pd||[]).forEach(p=>{const k=`${p.elite_tier}|${p.category}|${p.description}`;if(!pm[k])pm[k]={...p,total_confirmations:1,summary:p.description,latest_stay:p.stay_date};else{pm[k].total_confirmations+=1;if(p.stay_date&&(!pm[k].latest_stay||p.stay_date>pm[k].latest_stay))pm[k].latest_stay=p.stay_date}});sp(Object.values(pm));
 const{data:cd}=await supabase.from("comments").select("*").eq("hotel_id",hotel.id).order("created_at",{ascending:false});sc(cd||[]);sl(false)},[hotel.id]);useEffect(()=>{load()},[load]);
@@ -158,7 +163,7 @@ function HotelCard({hotel,perkCounts,score,onClick}){const c=perkCounts[hotel.id
 
 function AddHotelModal({onClose,user,onNeedAuth,onAdded,existingHotels}){const[name,sn]=useState(""),[brand,sb]=useState(""),[loc,sloc]=useState(""),[sub,ss2]=useState(false),[sim,ssim]=useState([]);
 const ck=v=>{sn(v);if(v.trim().length<3){ssim([]);return}const w=v.toLowerCase().replace(/[^a-z0-9\s]/g,"").split(/\s+/).filter(x=>x.length>2);if(!w.length){ssim([]);return}ssim(existingHotels.filter(h=>{const n=h.name.toLowerCase().replace(/[^a-z0-9\s]/g,"");return w.some(x=>n.includes(x))}).slice(0,5))};
-const go=async()=>{if(!user){onNeedAuth();onClose();return}if(!name.trim()||!brand||!loc.trim())return;ss2(true);const slug=name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");const{error}=await supabase.from("hotels").insert({name:name.trim(),brand,location:loc.trim(),slug,status:"pending",submitted_by:user.id});ss2(false);if(error){alert("Error: "+error.message);return}alert("Hotel submitted! It will appear after admin review.");onClose()};
+const go=async()=>{if(!user){onNeedAuth();onClose();return}if(!name.trim()||!brand||!loc.trim())return;ss2(true);const slug=mkSlug(name);const{error}=await supabase.from("hotels").insert({name:name.trim(),brand,location:loc.trim(),slug,status:"pending",submitted_by:user.id});ss2(false);if(error){alert("Error: "+error.message);return}alert("Hotel submitted! It will appear after admin review.");onClose()};
 return<div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(8px)"}} onClick={onClose}><div style={{background:"#fff",borderRadius:12,padding:40,maxWidth:450,width:"100%",boxShadow:"0 25px 60px rgba(0,0,0,0.15)"}} onClick={e=>e.stopPropagation()}>
 <h2 style={{fontSize:24,fontFamily:FD,fontWeight:700,marginBottom:4,color:"#0f172a"}}>Add a Hotel</h2><p style={{fontSize:13,color:"#94a3b8",marginBottom:24,fontFamily:FF}}>Can't find your property? Submit it for review.</p>
 <div style={{marginBottom:14}}><label style={LS}>Hotel Name</label><input value={name} onChange={e=>ck(e.target.value)} placeholder="The Westin Kierland Resort & Spa" style={IS}/>
@@ -167,34 +172,45 @@ return<div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.7)",zInd
 <div style={{marginBottom:28}}><label style={LS}>Location</label><input value={loc} onChange={e=>sloc(e.target.value)} placeholder="Scottsdale, AZ" style={IS}/></div>
 <div style={{display:"flex",gap:8}}><button onClick={go} disabled={sub} style={{...BT(),padding:"12px 28px",opacity:sub?0.5:1}}>Add Hotel</button><button onClick={onClose} style={BT("#f1f5f9","#64748b")}>Cancel</button></div></div></div>}
 
-export default function App(){const[path,nav]=usePath();const[user,su]=useState(null),[hotels,sh]=useState([]),[pc,spc]=useState({}),[scores,ssc]=useState({}),[search,ss]=useState(""),[bf,sbf]=useState(""),[sel,ssel]=useState(null),[showAuth,ssa]=useState(false),[showAdd,ssad]=useState(false),[profId,spid]=useState(null),[ld,sld]=useState(true),[ml,sml]=useState(!!window.google);
-const page=path==="/leaderboard"?"leaderboard":path==="/map"?"map":path==="/search"?"search":path==="/compare"?"compare":path.startsWith("/profile/")?"profile":"home";
+export default function App(){const[path,nav]=usePath();const[user,su]=useState(null),[hotels,sh]=useState([]),[pc,spc]=useState({}),[scores,ssc]=useState({}),[search,ss]=useState(""),[bf,sbf]=useState(""),[showAuth,ssa]=useState(false),[showAdd,ssad]=useState(false),[profId,spid]=useState(null),[ld,sld]=useState(true),[ml,sml]=useState(!!window.google);
+
+/* Route resolution */
+const hotelSlug=path.startsWith("/hotel/")?path.split("/hotel/")[1]:null;
+const sel=hotelSlug?hotels.find(h=>(h.slug||mkSlug(h.name))===hotelSlug):null;
+const page=path==="/leaderboard"?"leaderboard":path==="/map"?"map":path==="/search"?"search":path==="/compare"?"compare":path.startsWith("/profile/")?"profile":hotelSlug?"hotel":"home";
+
+/* Dynamic page titles */
+const pageTitle=page==="hotel"&&sel?`${sel.name} — Elite Perk Benefits | PerkSnob`:page==="leaderboard"?"Leaderboard | PerkSnob":page==="map"?"Map View | PerkSnob":page==="search"?"Search Perks | PerkSnob":page==="compare"?"Compare Hotels | PerkSnob":"PerkSnob — Marriott Elite Benefits, Crowdsourced";
+useTitle(pageTitle);
+
 const loadH=async()=>{sld(true);const{data}=await supabase.from("hotels").select("*").order("name");sh(data||[]);const{data:rp}=await supabase.from("perk_reports").select("hotel_id,category");const c={},cats={};(rp||[]).forEach(r=>{c[r.hotel_id]=(c[r.hotel_id]||0)+1;if(!cats[r.hotel_id])cats[r.hotel_id]=new Set();cats[r.hotel_id].add(r.category)});spc(c);const sc={};Object.keys(c).forEach(id=>{sc[id]=pscore(c[id],cats[id]?.size||0)});ssc(sc);sld(false)};
 useEffect(()=>{if(window.google){sml(true);return}const s=document.createElement("script");s.src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD2TOWNd9KNVyavscRXX1xsKV0LM6Xf8NQ&libraries=places";s.async=true;s.onload=()=>sml(true);document.head.appendChild(s)},[]);
 useEffect(()=>{supabase.auth.getUser().then(({data})=>{if(data?.user)su(data.user)});supabase.auth.onAuthStateChange((_,s)=>{su(s?.user||null)});loadH()},[]);
 useEffect(()=>{if(path.startsWith("/profile/")){spid(path.split("/profile/")[1])}},[path]);
-const goHome=()=>{ssel(null);nav("/")};const viewProf=id=>{nav("/profile/"+id)};
+const goHome=()=>{nav("/")};const viewProf=id=>{nav("/profile/"+id)};
+const openHotel=h=>{const slug=h.slug||mkSlug(h.name);nav("/hotel/"+slug)};
 const filt=hotels.filter(h=>{const ms=!search||h.name.toLowerCase().includes(search.toLowerCase())||h.location.toLowerCase().includes(search.toLowerCase());const mb=!bf||h.brand===bf;return ms&&mb});
 const sortedFilt=[...filt].sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)||(pc[b.id]||0)-(pc[a.id]||0)||a.name.localeCompare(b.name));
 const ub=[...new Set(hotels.map(h=>h.brand))].sort();
-const navBtn=(l,p)=><button onClick={()=>{ssel(null);nav(p)}} style={{background:page===p.slice(1)?"rgba(255,255,255,0.12)":"transparent",color:page===p.slice(1)?"#fff":"#94a3b8",border:"none",padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF,borderRadius:6,transition:"all 0.15s"}}>{l}</button>;
+const navBtn=(l,p)=><button onClick={()=>{nav(p)}} style={{background:page===p.slice(1)?"rgba(255,255,255,0.12)":"transparent",color:page===p.slice(1)?"#fff":"#94a3b8",border:"none",padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF,borderRadius:6,transition:"all 0.15s"}}>{l}</button>;
+const isHome=page==="home";
 return<div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:FF}}>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet"/>
 <style>{`::selection{background:#0f172a;color:#fff}input::placeholder,textarea::placeholder{color:#94a3b8}body{margin:0}`}</style>
 {showAuth&&<AuthModal onClose={()=>ssa(false)} onAuth={()=>supabase.auth.getUser().then(({data})=>su(data?.user))}/>}
 {showAdd&&<AddHotelModal onClose={()=>ssad(false)} user={user} onNeedAuth={()=>ssa(true)} onAdded={loadH} existingHotels={hotels}/>}
-<div style={{background:"#0f172a",padding:!sel&&page==="home"?"0 0 56px":"0 0 20px"}}><div style={{maxWidth:1100,margin:"0 auto",padding:"16px 28px 0"}}>
+<div style={{background:"#0f172a",padding:isHome?"0 0 56px":"0 0 20px"}}><div style={{maxWidth:1100,margin:"0 auto",padding:"16px 28px 0"}}>
 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
 <div onClick={goHome} style={{cursor:"pointer",display:"flex",alignItems:"baseline",gap:1}}><span style={{fontSize:36,fontWeight:700,color:"#fff",fontFamily:FD}}>Perk</span><span style={{fontSize:36,fontWeight:700,color:"#94a3b8",fontFamily:FD}}>Snob</span></div>
 <nav style={{display:"flex",alignItems:"center",gap:2}}>{navBtn("Map","/map")}{navBtn("Search","/search")}{navBtn("Compare","/compare")}{navBtn("Leaderboard","/leaderboard")}</nav>
 <div style={{display:"flex",gap:8,alignItems:"center"}}>
 {user?<><span style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>{dname(user)}</span><button onClick={async()=>{await supabase.auth.signOut();su(null)}} style={{background:"transparent",color:"#94a3b8",border:"1px solid #475569",borderRadius:6,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Logout</button></>:<button onClick={()=>ssa(true)} style={{background:"transparent",color:"#94a3b8",border:"1px solid #475569",borderRadius:6,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Sign In</button>}
 <button onClick={()=>user?ssad(true):ssa(true)} style={{background:"#fff",color:"#0f172a",border:"none",borderRadius:6,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+ Add Hotel</button></div></div>
-{!sel&&page==="home"&&<div style={{paddingTop:24,paddingBottom:8}}><h1 style={{fontSize:52,fontWeight:700,color:"#fff",margin:"0 0 14px",lineHeight:1.02,maxWidth:520,fontFamily:FD}}>Titanium, Platinum, Ambassador Elite Perks &amp; Benefits</h1>
+{isHome&&<div style={{paddingTop:24,paddingBottom:8}}><h1 style={{fontSize:52,fontWeight:700,color:"#fff",margin:"0 0 14px",lineHeight:1.02,maxWidth:520,fontFamily:FD}}>Titanium, Platinum, Ambassador Elite Perks &amp; Benefits</h1>
 <p style={{fontSize:16,color:"#94a3b8",margin:"0 0 36px",maxWidth:460,lineHeight:1.6,fontFamily:FF}}>Real Marriott Bonvoy elite benefits reported by real guests. Know what you're getting before you book.</p>
 <div style={{display:"flex",gap:10,flexWrap:"wrap"}}><input type="text" value={search} onChange={e=>ss(e.target.value)} placeholder="Search hotels or destinations..." style={{flex:"1 1 320px",padding:"14px 18px",borderRadius:8,border:"1px solid #1e293b",background:"#1e293b",color:"#e2e8f0",fontSize:14,fontFamily:FF,outline:"none",boxSizing:"border-box"}}/>
 <select value={bf} onChange={e=>sbf(e.target.value)} style={{padding:"14px 24px 14px 18px",borderRadius:8,border:"1px solid #1e293b",background:"#1e293b",color:"#e2e8f0",fontSize:13,fontFamily:FF,outline:"none",cursor:"pointer",minWidth:120,maxWidth:180}}><option value="" style={{color:"#000"}}>All Brands</option>{ub.map(b=><option key={b} value={b} style={{color:"#000"}}>{b}</option>)}</select></div></div>}</div></div>
-<div style={{maxWidth:1100,margin:!sel&&page==="home"?"-28px auto 0":"16px auto 0",padding:"0 28px 60px",position:"relative"}}>
-{page==="leaderboard"?<Leaderboard onClose={goHome} onProfile={viewProf}/>:page==="map"?<>{!ml?<div style={{textAlign:"center",padding:60,color:"#94a3b8"}}>Loading map...</div>:<MapView hotels={filt} perkCounts={pc} onSelect={h=>{ssel(h);nav("/")}}/>}</>:page==="search"?<><button onClick={goHome} style={{background:"#fff",border:"1px solid #e2e8f0",cursor:"pointer",fontSize:13,color:"#334155",fontWeight:600,fontFamily:FF,padding:"8px 16px",marginBottom:24,borderRadius:6}}>← Back</button><PerkSearch user={user} onNeedAuth={()=>ssa(true)}/></>:page==="compare"?<Comparison hotels={hotels} onClose={goHome}/>:page==="profile"&&profId?<UserProfile userId={profId} onClose={goHome}/>:sel?<HotelDetail hotel={sel} user={user} onBack={()=>ssel(null)} onNeedAuth={()=>ssa(true)}/>:ld?<div style={{textAlign:"center",padding:60,color:"#94a3b8"}}>Loading...</div>:<><div style={{marginBottom:14,marginTop:42}}><span style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>{sortedFilt.length} propert{sortedFilt.length!==1?"ies":"y"}</span></div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{sortedFilt.map(h=><HotelCard key={h.id} hotel={h} perkCounts={pc} score={scores[h.id]||0} onClick={()=>ssel(h)}/>)}</div>
+<div style={{maxWidth:1100,margin:isHome?"-28px auto 0":"16px auto 0",padding:"0 28px 60px",position:"relative"}}>
+{page==="leaderboard"?<Leaderboard onClose={goHome} onProfile={viewProf}/>:page==="map"?<>{!ml?<div style={{textAlign:"center",padding:60,color:"#94a3b8"}}>Loading map...</div>:<MapView hotels={filt} perkCounts={pc} onSelect={openHotel}/>}</>:page==="search"?<><button onClick={goHome} style={{background:"#fff",border:"1px solid #e2e8f0",cursor:"pointer",fontSize:13,color:"#334155",fontWeight:600,fontFamily:FF,padding:"8px 16px",marginBottom:24,borderRadius:6}}>← Back</button><PerkSearch user={user} onNeedAuth={()=>ssa(true)}/></>:page==="compare"?<Comparison hotels={hotels} onClose={goHome}/>:page==="profile"&&profId?<UserProfile userId={profId} onClose={goHome}/>:page==="hotel"&&sel?<HotelDetail hotel={sel} user={user} onBack={goHome} onNeedAuth={()=>ssa(true)}/>:page==="hotel"&&hotelSlug&&!ld&&!sel?<div style={{textAlign:"center",padding:60}}><div style={{fontSize:40,marginBottom:12}}>🏨</div><h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:6}}>Hotel not found</h3><p style={{fontSize:13,color:"#94a3b8",marginBottom:20}}>This property may not exist yet.</p><button onClick={goHome} style={BT()}>← Back to all hotels</button></div>:ld?<div style={{textAlign:"center",padding:60,color:"#94a3b8"}}>Loading...</div>:<><div style={{marginBottom:14,marginTop:42}}><span style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>{sortedFilt.length} propert{sortedFilt.length!==1?"ies":"y"}</span></div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{sortedFilt.map(h=><HotelCard key={h.id} hotel={h} perkCounts={pc} score={scores[h.id]||0} onClick={()=>openHotel(h)}/>)}</div>
 {!sortedFilt.length&&<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:40,marginBottom:12}}>🏨</div><h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:6}}>No hotels found</h3><p style={{fontSize:13,color:"#94a3b8",marginBottom:20}}>Try a different search</p><button onClick={()=>user?ssad(true):ssa(true)} style={BT()}>+ Add a Hotel</button></div>}</>}</div></div>}
