@@ -307,7 +307,7 @@ const[cT,scT]=useState(""),[cX,scX]=useState("");
 const[editId,setEditId]=useState(null);const lastSub=useRef(0);
 useTitle(`${hotel.name} — Elite Perk Benefits | PerkSnob`);
 const load=useCallback(async()=>{sl(true);ser("");try{const{data:pd,error:e1}=await supabase.from("perk_reports").select("*").eq("hotel_id",hotel.id).order("created_at",{ascending:false});if(e1)throw e1;
-const pm={};(pd||[]).forEach(p=>{const k=`${p.elite_tier}|${p.category}|${p.description}`;if(!pm[k])pm[k]={...p,total_confirmations:1,summary:p.description,latest_stay:p.stay_date};else{pm[k].total_confirmations+=1;if(p.stay_date&&(!pm[k].latest_stay||p.stay_date>pm[k].latest_stay))pm[k].latest_stay=p.stay_date}});sp(Object.values(pm));
+const pm={};(pd||[]).forEach(p=>{const k=`${p.elite_tier}|${p.category}|${p.description}`;if(!pm[k]){pm[k]={...p,total_confirmations:1,summary:p.description,latest_stay:p.stay_date,original_user_id:p.user_id,original_created:p.created_at}}else{pm[k].total_confirmations+=1;if(p.stay_date&&(!pm[k].latest_stay||p.stay_date>pm[k].latest_stay))pm[k].latest_stay=p.stay_date;if(p.created_at<pm[k].original_created){pm[k].user_id=p.user_id;pm[k].id=p.id;pm[k].display_name=p.display_name;pm[k].original_created=p.created_at;pm[k].category_details=p.category_details||pm[k].category_details}}});sp(Object.values(pm));
 const{data:cd}=await supabase.from("comments").select("*").eq("hotel_id",hotel.id).order("created_at",{ascending:false});sc(cd||[])}catch(e){ser("Failed to load hotel data. Please try again.");console.error(e)}sl(false)},[hotel.id]);useEffect(()=>{load()},[load]);
 const resetForm=()=>{ssT("");ssDate("");ssBT("");ssPC("");setEntries([emptyEntry()]);setEditId(null);ssf(false)};
 const subPerk=async()=>{if(!user){onNeedAuth();return}
