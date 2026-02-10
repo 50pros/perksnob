@@ -208,20 +208,6 @@ return<div><button onClick={onClose} style={{background:"#fff",border:"1px solid
 <div style={{fontSize:12,fontWeight:700,color:"#0f172a",fontFamily:FF,marginBottom:8,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{h?.name||"Select"}</div>
 {perks.length?perks.map((p,i)=><div key={i} style={{display:"flex",gap:6,padding:"5px 0",borderBottom:"1px solid #f8fafc",fontSize:13,fontFamily:FF,color:"#475569"}}><span>{gc(p.category).icon}</span><span>{p.summary}</span></div>):<div style={{color:"#cbd5e1",fontSize:12,fontFamily:FF}}>No perks</div>}</div>})}</div></div>})}</div>}
 
-function UserProfile({userId,onClose}){const[p,sp]=useState(null),[r,sr]=useState([]),[ld,sl]=useState(true),[err,ser]=useState("");
-useEffect(()=>{(async()=>{try{const{data:pd,error:e1}=await supabase.from("user_profiles").select("*").eq("user_id",userId).single();if(e1)throw e1;sp(pd);const{data:rd}=await supabase.from("perk_reports").select("*,hotels(name,brand)").eq("user_id",userId).order("created_at",{ascending:false}).limit(20);sr(rd||[])}catch(e){ser("Failed to load profile.")}sl(false)})()},[userId]);
-if(ld)return<div style={{textAlign:"center",padding:60,color:"#94a3b8"}}><Skeleton w={200} h={20}/></div>;
-if(err)return<div style={{textAlign:"center",padding:60}}><p style={{color:"#dc2626",fontFamily:FF}}>{err}</p><button onClick={onClose} style={{...BT(),marginTop:12}}>← Back</button></div>;
-if(!p)return<div style={{textAlign:"center",padding:60,color:"#94a3b8"}}>Profile not found.</div>;
-return<div><button onClick={onClose} style={{background:"#fff",border:"1px solid #e2e8f0",cursor:"pointer",fontSize:13,color:"#334155",fontWeight:600,fontFamily:FF,padding:"8px 16px",marginBottom:24,borderRadius:6}}>← Back</button>
-<div style={{background:"#0f172a",borderRadius:12,padding:36,marginBottom:28,color:"#fff",display:"flex",alignItems:"center",gap:20,flexWrap:"wrap"}}>
-<div style={{width:60,height:60,borderRadius:"50%",background:"#1e293b",color:"#e2e8f0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,fontWeight:700,fontFamily:FD}}>{p.display_name?.charAt(0).toUpperCase()}</div>
-<div><h1 style={{fontSize:26,fontWeight:700,margin:"0 0 4px",fontFamily:FD}}>{p.display_name}</h1><p style={{fontSize:13,color:"#94a3b8",margin:0,fontFamily:FF}}>{be(p.badge)} {p.badge} · Since {new Date(p.member_since).toLocaleDateString("en-US",{year:"numeric",month:"short"})}</p></div></div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:24}}>{[{n:p.total_reports,l:"Reports"},{n:p.hotels_covered,l:"Hotels"},{n:p.categories_reported,l:"Categories"}].map(x=><div key={x.l} style={{background:"#fff",borderRadius:8,padding:18,border:"1px solid #e2e8f0",textAlign:"center"}}><div style={{fontSize:28,fontWeight:700,color:"#0f172a",fontFamily:FD}}>{x.n}</div><div style={{fontSize:10,color:"#94a3b8",fontFamily:FF,textTransform:"uppercase",letterSpacing:0.8}}>{x.l}</div></div>)}</div>
-<h3 style={{fontSize:15,fontWeight:700,color:"#0f172a",fontFamily:FF,marginBottom:12}}>Recent Reports</h3>
-{r.map((x,i)=><div key={i} style={{display:"flex",gap:10,padding:"12px 0",borderBottom:"1px solid #f1f5f9"}}><span style={{fontSize:16}}>{gc(x.category).icon}</span><div style={{flex:1}}><div style={{fontSize:12,fontWeight:700,color:"#0f172a",fontFamily:FF}}>{x.hotels?.name}</div><div style={{fontSize:13,color:"#475569",fontFamily:FF}}>{x.description}</div><div style={{fontSize:11,color:"#94a3b8",fontFamily:FF,marginTop:3}}>{gt(x.elite_tier).label} · {ta(x.created_at)}</div></div></div>)}
-{!r.length&&<div style={{padding:20,color:"#94a3b8",fontSize:13,fontFamily:FF}}>No reports yet.</div>}</div>}
-
 function Leaderboard({onClose,onProfile}){const[ls,sl]=useState([]),[ld,sld]=useState(true);useEffect(()=>{(async()=>{const{data}=await supabase.from("leaderboard").select("*").limit(25);sl(data||[]);sld(false)})()},[]);
 return<div><button onClick={onClose} style={{background:"#fff",border:"1px solid #e2e8f0",cursor:"pointer",fontSize:13,color:"#334155",fontWeight:600,fontFamily:FF,padding:"8px 16px",marginBottom:24,borderRadius:6}}>← Back</button>
 <div style={{background:"#0f172a",borderRadius:12,padding:36,marginBottom:28,color:"#fff"}}><p style={{fontSize:10,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:FF}}>Community</p><h1 style={{fontSize:34,fontWeight:700,margin:0,fontFamily:FD}}>Leaderboard</h1><p style={{fontSize:14,color:"#94a3b8",fontFamily:FF,marginTop:8}}>Top contributors making hotel intel better.</p></div>
@@ -251,8 +237,9 @@ const[profile,setProfile]=useState(null),[stats,setStats]=useState({reports:0,ho
 const[bio,setBio]=useState(""),[tier,setTier]=useState(""),[since,setSince]=useState(""),[reddit,setReddit]=useState("");
 const isOwn=currentUser&&currentUser.id===userId;
 useEffect(()=>{(async()=>{sld(true);
-const{data:p}=await supabase.from("user_profiles").select("*").eq("id",userId).single();
+const{data:p}=await supabase.from("user_profiles").select("*").eq("id",userId).maybeSingle();
 if(p){setProfile(p);setBio(p.bio||"");setTier(p.elite_tier||"");setSince(p.elite_since||"");setReddit(p.reddit_username||"")}
+else{const{data:rp2}=await supabase.from("perk_reports").select("display_name").eq("user_id",userId).limit(1);setProfile({id:userId,display_name:rp2?.[0]?.display_name||"User"})}
 const{data:rp}=await supabase.from("perk_reports").select("*").eq("user_id",userId);
 const myPerks=rp||[];setPerks(myPerks);
 const hotelSet=new Set(myPerks.map(r=>r.hotel_id));
@@ -417,7 +404,7 @@ const loadH=async()=>{sld(true);try{const{data,error}=await supabase.from("hotel
 useEffect(()=>{if(window.google){sml(true);return}const s=document.createElement("script");s.src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD2TOWNd9KNVyavscRXX1xsKV0LM6Xf8NQ&libraries=places";s.async=true;s.onload=()=>sml(true);document.head.appendChild(s)},[]);
 useEffect(()=>{supabase.auth.getUser().then(({data})=>{if(data?.user)su(data.user)});supabase.auth.onAuthStateChange((_,s)=>{su(s?.user||null)});loadH()},[]);
 useEffect(()=>{if(path.startsWith("/profile/")){spid(path.split("/profile/")[1])}},[path]);
-const goHome=()=>{nav("/")};const viewProf=id=>{nav("/profile/"+id)};
+const goHome=()=>{spid(null);nav("/")};const viewProf=id=>{spid(id);nav("/profile/"+id)};
 const openHotel=h=>{const slug=h.slug||mkSlug(h.name);nav("/hotel/"+slug)};
 const PERK_FILTERS=[
 {key:"free_breakfast",label:"🍳 Free Breakfast",icon:"🍳",test:perks=>perks?.some(p=>p.category==="breakfast"&&(p.details?.cost==="Complimentary"||!p.details?.cost))},
@@ -450,7 +437,7 @@ return<div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:FF,display:
 <div onClick={goHome} style={{cursor:"pointer",display:"flex",alignItems:"baseline",gap:1}} role="link" aria-label="PerkSnob home"><span style={{fontSize:36,fontWeight:700,color:"#fff",fontFamily:FD}}>Perk</span><span style={{fontSize:36,fontWeight:700,color:"#94a3b8",fontFamily:FD}}>Snob</span></div>
 <nav className="ps-nav" style={{display:"flex",alignItems:"center",gap:2}} aria-label="Main navigation">{navBtn("Map","/map")}{navBtn("Compare","/compare")}{navBtn("Leaderboard","/leaderboard")}</nav>
 <div className="ps-auth" style={{display:"flex",gap:8,alignItems:"center"}}>
-{user?<><button onClick={()=>nav("/profile/"+user.id)} style={{background:"transparent",color:"#94a3b8",border:"none",padding:"7px 10px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF,textDecoration:path==="/profile/"+user.id?"underline":"none"}}>{dname(user)}</button><button onClick={async()=>{await supabase.auth.signOut();su(null);showToast("Signed out.")}} style={{background:"transparent",color:"#94a3b8",border:"1px solid #475569",borderRadius:6,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Logout</button></>:<button onClick={()=>ssa(true)} style={{background:"transparent",color:"#94a3b8",border:"1px solid #475569",borderRadius:6,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Sign In</button>}
+{user?<><button onClick={()=>{spid(user.id);nav("/profile/"+user.id)}} style={{background:"transparent",color:"#94a3b8",border:"none",padding:"7px 10px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF,textDecoration:path==="/profile/"+user.id?"underline":"none"}}>{dname(user)}</button><button onClick={async()=>{await supabase.auth.signOut();su(null);showToast("Signed out.")}} style={{background:"transparent",color:"#94a3b8",border:"1px solid #475569",borderRadius:6,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Logout</button></>:<button onClick={()=>ssa(true)} style={{background:"transparent",color:"#94a3b8",border:"1px solid #475569",borderRadius:6,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:FF}}>Sign In</button>}
 <button onClick={()=>user?ssad(true):ssa(true)} style={{background:"#fff",color:"#0f172a",border:"none",borderRadius:6,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+ Add Hotel</button></div></div>
 {isHome&&<div style={{paddingTop:24,paddingBottom:8}}><h1 style={{fontSize:52,fontWeight:700,color:"#fff",margin:"0 0 14px",lineHeight:1.02,maxWidth:520,fontFamily:FD}}>Titanium, Platinum, Ambassador Elite Perks &amp; Benefits</h1>
 <p style={{fontSize:16,color:"#94a3b8",margin:"0 0 36px",maxWidth:460,lineHeight:1.6,fontFamily:FF}}>Real Marriott Bonvoy elite benefits reported by real guests. Know what you're getting before you book.</p>
