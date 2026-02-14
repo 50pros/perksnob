@@ -120,25 +120,36 @@ return<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>{tags.map(
 function PerkCard({perk,user,onVote,onEdit,onDelete,onFlag,showHotel}){const cat=gc(perk.category),stay=fsd(perk.latest_stay);
 const isOwner=user&&perk.user_id===user.id;const hasPromo=perk.promo_code||perk.booking_type==="Employee (MMF, MMP, etc.)"||perk.booking_type==="Employee (MMP)"||perk.booking_type==="Corporate"||perk.booking_type==="3rd Party (e.g. Priceline)";
 const score=(perk.upvotes||0)-(perk.downvotes||0);const myVote=perk.my_vote||0;const[flagging,setFlagging]=useState(false);
-return<div style={{display:"flex",gap:14,padding:"14px 0",borderBottom:"1px solid #f1f5f9"}}>
-<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:36}}>
+const submitted=perk.created_at?new Date(perk.created_at).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"}):"";
+return<div style={{display:"flex",gap:14,padding:"16px 0",borderBottom:"1px solid #f1f5f9"}}>
+<div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:36,paddingTop:2}}>
 {user?<button onClick={()=>onVote(perk,myVote===1?0:1)} aria-label="Upvote" style={{background:"none",border:"none",cursor:"pointer",fontSize:16,padding:0,color:myVote===1?"#059669":"#cbd5e1",transition:"color 0.15s"}}>▲</button>:<span style={{fontSize:16,color:"#cbd5e1"}}>▲</span>}
 <span style={{fontSize:13,fontWeight:700,color:score>0?"#059669":score<0?"#dc2626":"#94a3b8",fontFamily:FF}}>{score}</span>
 {user?<button onClick={()=>onVote(perk,myVote===-1?0:-1)} aria-label="Downvote" style={{background:"none",border:"none",cursor:"pointer",fontSize:16,padding:0,color:myVote===-1?"#dc2626":"#cbd5e1",transition:"color 0.15s"}}>▼</button>:<span style={{fontSize:16,color:"#cbd5e1"}}>▼</span>}
 </div>
-<div style={{flex:1,minWidth:0}}>{showHotel&&<div style={{fontSize:11,fontWeight:700,color:"#0f172a",fontFamily:FF,marginBottom:3}}>{perk.hotel_name}</div>}
-<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3,flexWrap:"wrap"}}><span style={{fontSize:11,fontWeight:700,color:"#334155",fontFamily:FF,textTransform:"uppercase",letterSpacing:0.8}}>{cat.label}</span>
+<div style={{flex:1,minWidth:0}}>
+{showHotel&&<div style={{fontSize:11,fontWeight:700,color:"#0f172a",fontFamily:FF,marginBottom:4}}>{perk.hotel_name}</div>}
+{/* Row 1: Category */}
+<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}><span style={{fontSize:15}}>{cat.icon}</span><span style={{fontSize:12,fontWeight:700,color:"#0f172a",fontFamily:FF,textTransform:"uppercase",letterSpacing:0.8}}>{cat.label}</span></div>
+{/* Row 2: Username · Submitted · Stay date */}
+<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6,flexWrap:"wrap",fontSize:11,color:"#64748b",fontFamily:FF}}>
+<span style={{fontWeight:600,color:"#334155"}}>{perk.display_name}</span>
+{submitted&&<><span style={{color:"#cbd5e1"}}>·</span><span>{submitted}</span></>}
+{stay&&<><span style={{color:"#cbd5e1"}}>·</span><span>Stayed {stay}</span></>}
+{perk.edit_count>0&&<><span style={{color:"#cbd5e1"}}>·</span><span style={{fontStyle:"italic",color:"#94a3b8"}} title={perk.last_edited_at?`Last edited ${new Date(perk.last_edited_at).toLocaleDateString()}`:""}>edited{perk.edit_count>1?` ×${perk.edit_count}`:""}</span></>}
+</div>
+{/* Row 3: Tags */}
+<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,flexWrap:"wrap"}}>
 <span style={{...TAG("#f1f5f9",gt(perk.elite_tier).color)}}>{gt(perk.elite_tier).label}</span>
 {perk.upgrade_type&&<span style={{...TAG("#eff6ff","#1d4ed8")}}>{perk.upgrade_type}</span>}
 {perk.booking_type&&<span style={{...TAG("#f0fdf4","#15803d")}}>{perk.booking_type}</span>}
 {hasPromo&&<span style={{...TAG("#fefce8","#a16207"),cursor:"help"}} title="Booked with a promo/corporate/employee code — perks received may differ from standard elite bookings">⚠️ {perk.promo_code||"Promo/Corp rate"}</span>}
-{stay&&<span style={{fontSize:9,color:"#94a3b8",fontFamily:FF,background:"#f8fafc",padding:"2px 6px",borderRadius:3}}>Stay: {stay}</span>}
-{perk.created_at&&<span style={{fontSize:9,color:"#94a3b8",fontFamily:FF,background:"#f8fafc",padding:"2px 6px",borderRadius:3}}>Submitted: {new Date(perk.created_at).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"})}</span>}
-{perk.edit_count>0&&<span style={{fontSize:9,color:"#94a3b8",fontFamily:FF,fontStyle:"italic"}} title={perk.last_edited_at?`Last edited ${new Date(perk.last_edited_at).toLocaleDateString()}`:""}>edited{perk.edit_count>1?` ×${perk.edit_count}`:""}</span>}
-<span style={{fontSize:9,color:"#94a3b8",fontFamily:FF}}>{perk.display_name}</span></div>
+</div>
+{/* Row 4: Description */}
 <div style={{fontSize:13,color:"#475569",lineHeight:1.6,fontFamily:FF}}>{perk.summary||perk.description}</div>
 <CategoryDetailTags category={perk.category} details={perk.category_details}/>
-<div style={{marginTop:6,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+{/* Row 5: Actions */}
+<div style={{marginTop:8,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
 {isOwner&&onEdit&&<button onClick={()=>onEdit(perk)} aria-label="Edit perk" style={{background:"none",border:"1px solid #dbeafe",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",color:"#2563eb",fontFamily:FF,fontWeight:600}}>Edit</button>}
 {isOwner&&onDelete&&<button onClick={()=>{if(window.confirm("Delete this perk report?"))onDelete(perk)}} aria-label="Delete perk" style={{background:"none",border:"1px solid #fecaca",borderRadius:4,padding:"2px 8px",fontSize:10,cursor:"pointer",color:"#dc2626",fontFamily:FF}}>Delete</button>}
 {user&&!isOwner&&!flagging&&<button onClick={()=>setFlagging(true)} aria-label="Report" style={{background:"none",border:"none",padding:"2px 4px",fontSize:10,cursor:"pointer",color:"#cbd5e1",fontFamily:FF}}>🚩</button>}
@@ -147,7 +158,7 @@ return<div style={{display:"flex",gap:14,padding:"14px 0",borderBottom:"1px soli
 </div></div>}
 
 function TierSection({tier,perks,user,onVote,onEdit,onDelete}){const t=gt(tier);if(!perks?.length)return<div style={{padding:20,borderRadius:8,background:"#fafbfc",border:"1px solid #f1f5f9",marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><span style={{width:6,height:6,borderRadius:"50%",background:t.color}}/><span style={{fontSize:12,fontWeight:700,color:t.color,fontFamily:FF}}>{t.label}</span></div><div style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>No perks reported yet. Be the first to share what you received!</div></div>;
-return<div style={{padding:"16px 20px",borderRadius:8,background:"#fff",border:"1px solid #e2e8f0",marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><span style={{width:6,height:6,borderRadius:"50%",background:t.color}}/><span style={{fontSize:13,fontWeight:700,color:t.color,fontFamily:FF}}>{t.label}</span><span style={{fontSize:10,color:"#94a3b8",fontFamily:FF,marginLeft:"auto"}}>{perks.length} perk{perks.length!==1?"s":""}</span></div>{perks.map((p,i)=><PerkCard key={p.id||i} perk={p} user={user} onVote={onVote} onEdit={onEdit} onDelete={onDelete}/>)}</div>}
+return<div style={{padding:"16px 20px",borderRadius:8,background:"#fff",border:"1px solid #e2e8f0",marginBottom:12}}><div style={{display:"flex",alignItems:"center",gap:8,paddingBottom:12,borderBottom:"1px solid #e2e8f0",marginBottom:4}}><span style={{width:6,height:6,borderRadius:"50%",background:t.color}}/><span style={{fontSize:13,fontWeight:700,color:t.color,fontFamily:FF}}>{t.label}</span><span style={{fontSize:10,color:"#94a3b8",fontFamily:FF,marginLeft:"auto"}}>{perks.length} perk{perks.length!==1?"s":""}</span></div>{perks.map((p,i)=><PerkCard key={p.id||i} perk={p} user={user} onVote={onVote} onEdit={onEdit} onDelete={onDelete}/>)}</div>}
 
 function Footer(){return<footer style={{background:"#0f172a",borderTop:"1px solid #1e293b",padding:"40px 28px",marginTop:40}}><div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:24}}>
 <div><div style={{display:"flex",alignItems:"baseline",gap:1,marginBottom:8}}><span style={{fontSize:20,fontWeight:700,color:"#fff",fontFamily:FD}}>Perk</span><span style={{fontSize:20,fontWeight:700,color:"#94a3b8",fontFamily:FD}}>Snob</span></div>
