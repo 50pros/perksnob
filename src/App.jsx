@@ -133,6 +133,7 @@ return<div style={{display:"flex",gap:14,padding:"14px 0",borderBottom:"1px soli
 {perk.booking_type&&<span style={{...TAG("#f0fdf4","#15803d")}}>{perk.booking_type}</span>}
 {hasPromo&&<span style={{...TAG("#fefce8","#a16207"),cursor:"help"}} title="Booked with a promo/corporate/employee code — perks received may differ from standard elite bookings">⚠️ {perk.promo_code||"Promo/Corp rate"}</span>}
 {stay&&<span style={{fontSize:9,color:"#94a3b8",fontFamily:FF,background:"#f8fafc",padding:"2px 6px",borderRadius:3}}>Stay: {stay}</span>}
+{perk.created_at&&<span style={{fontSize:9,color:"#94a3b8",fontFamily:FF,background:"#f8fafc",padding:"2px 6px",borderRadius:3}}>Submitted: {new Date(perk.created_at).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"})}</span>}
 {perk.edit_count>0&&<span style={{fontSize:9,color:"#94a3b8",fontFamily:FF,fontStyle:"italic"}} title={perk.last_edited_at?`Last edited ${new Date(perk.last_edited_at).toLocaleDateString()}`:""}>edited{perk.edit_count>1?` ×${perk.edit_count}`:""}</span>}
 <span style={{fontSize:9,color:"#94a3b8",fontFamily:FF}}>{perk.display_name}</span></div>
 <div style={{fontSize:13,color:"#475569",lineHeight:1.6,fontFamily:FF}}>{perk.summary||perk.description}</div>
