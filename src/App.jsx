@@ -162,6 +162,27 @@ return<div style={{display:"flex",gap:4,justifyContent:"center",marginTop:28,ali
 <button onClick={()=>onChange(current+1)} disabled={current===total} style={{...BT("#f1f5f9","#64748b"),padding:"6px 12px",fontSize:12,opacity:current===total?0.4:1}}>Next →</button>
 </div>}
 
+/* Netflix-style horizontal scrolling row */
+function HotelRow({title,subtitle,hotels,perkCounts,scores,onSelect}){
+const ref=useRef(null);
+const scroll=(dir)=>{if(ref.current)ref.current.scrollBy({left:dir*300,behavior:"smooth"})};
+if(!hotels||!hotels.length)return null;
+return<div style={{marginBottom:36}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:12}}>
+<div><h3 style={{fontSize:17,fontWeight:700,color:"#0f172a",fontFamily:FF,margin:0}}>{title}</h3>
+{subtitle&&<p style={{fontSize:12,color:"#94a3b8",fontFamily:FF,margin:"4px 0 0"}}>{subtitle}</p>}</div>
+<div style={{display:"flex",gap:4,flexShrink:0}}>
+<button onClick={()=>scroll(-1)} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:6,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14,color:"#64748b",transition:"all 0.15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#0f172a"} onMouseLeave={e=>e.currentTarget.style.borderColor="#e2e8f0"}>←</button>
+<button onClick={()=>scroll(1)} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:6,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14,color:"#64748b",transition:"all 0.15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#0f172a"} onMouseLeave={e=>e.currentTarget.style.borderColor="#e2e8f0"}>→</button>
+</div></div>
+<div ref={ref} className="ps-row" style={{display:"flex",gap:12,overflowX:"auto",scrollbarWidth:"none",msOverflowStyle:"none",paddingBottom:4,scrollSnapType:"x mandatory"}}>
+{hotels.map(h=>{const c=perkCounts[h.id]||0;const sc=scores[h.id]||0;return<div key={h.id} onClick={()=>onSelect(h)} style={{flex:"0 0 260px",scrollSnapAlign:"start",background:"#fff",borderRadius:10,padding:"18px 20px",border:"1px solid #e2e8f0",cursor:"pointer",transition:"all 0.15s",display:"flex",flexDirection:"column",justifyContent:"space-between",minHeight:140}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#0f172a";e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(15,23,42,0.08)"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none"}}>
+<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}><span style={{fontSize:9,fontWeight:700,color:"#94a3b8",fontFamily:FF,textTransform:"uppercase",letterSpacing:1.5}}>{h.brand}</span>{sc>0&&<span style={{fontSize:13,fontWeight:700,color:sc>=70?"#059669":sc>=40?"#d97706":"#dc2626",fontFamily:FF}}>{sc}</span>}</div>
+<div style={{fontSize:14,fontWeight:700,color:"#0f172a",fontFamily:FF,marginBottom:3,lineHeight:1.3}}>{h.name}</div><div style={{fontSize:11,color:"#94a3b8",fontFamily:FF}}>{h.location}</div></div>
+<div style={{fontSize:11,color:"#64748b",fontFamily:FF,display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:14,paddingTop:10,borderTop:"1px solid #f1f5f9"}}><span><span style={{color:"#0f172a",fontWeight:700,fontSize:14}}>{c}</span> reports</span>{h.room_count&&<span style={{fontSize:10,color:"#94a3b8"}}>{h.room_count} rooms</span>}</div>
+</div>})}
+</div></div>}
+
 /* Character counter */
 function CharCount({val,max}){const r=max-val.length;return<span style={{fontSize:10,color:r<20?"#dc2626":"#94a3b8",fontFamily:FF,float:"right"}}>{r}</span>}
 
@@ -540,6 +561,57 @@ const PERK_FILTERS=[
 const filt=hotels.filter(h=>{const words=search.toLowerCase().split(/\s+/).filter(w=>w.length>0);const hay=[h.name,h.location,h.region||"",h.brand,h.country||""].join(" ").toLowerCase();const ms=!search||words.every(w=>hay.includes(w));const mb=!bf||h.brand===bf;const mr=!regionFilter||h.region===regionFilter;const mp=!perkFilter.length||perkFilter.every(pk=>PERK_FILTERS.find(f=>f.key===pk)?.test(hotelPerks[h.id]));return ms&&mb&&mr&&mp});
 const sortedFilt=[...filt].sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)||(pc[b.id]||0)-(pc[a.id]||0)||a.name.localeCompare(b.name));
 const ub=[...new Set(hotels.map(h=>h.brand))].sort();
+
+/* Curated Netflix-style rows */
+const curatedRows=useMemo(()=>{
+if(!hotels.length)return[];
+const withReports=hotels.filter(h=>(pc[h.id]||0)>0);
+const rows=[];
+
+/* Top Rated */
+const topRated=[...withReports].filter(h=>(scores[h.id]||0)>=40).sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)).slice(0,20);
+if(topRated.length>=3)rows.push({title:"Top Rated Properties",subtitle:"Highest perk scores based on guest reports",hotels:topRated});
+
+/* Best for each tier */
+TIERS.forEach(t=>{const tierHotels=withReports.filter(h=>(hotelPerks[h.id]||[]).some(p=>p.category&&true)).sort((a,b)=>(pc[b.id]||0)-(pc[a.id]||0)).slice(0,20);
+});
+const ambHotels=withReports.filter(h=>(hotelPerks[h.id]||[]).some(p=>true)).filter(h=>hotels.find(x=>x.id===h.id)?.brand&&["The Ritz-Carlton","St. Regis","W Hotels","EDITION","The Luxury Collection","JW Marriott"].includes(hotels.find(x=>x.id===h.id)?.brand)).sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)).slice(0,20);
+if(ambHotels.length>=3)rows.push({title:"Best for Ambassador & Titanium Elite",subtitle:"Luxury brands with the most reported perks",hotels:ambHotels});
+
+/* Free Breakfast Confirmed */
+const bfHotels=withReports.filter(h=>(hotelPerks[h.id]||[]).some(p=>p.category==="breakfast"&&(!p.details?.cost||p.details?.cost==="Complimentary"))).sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)).slice(0,20);
+if(bfHotels.length>=3)rows.push({title:"Free Breakfast Confirmed",subtitle:"Hotels where complimentary breakfast has been reported",hotels:bfHotels});
+
+/* Lounge Access */
+const loungeHotels=withReports.filter(h=>(hotelPerks[h.id]||[]).some(p=>p.category==="lounge"&&p.details?.status!=="Closed"&&p.details?.status!=="No lounge")).sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)).slice(0,20);
+if(loungeHotels.length>=3)rows.push({title:"Lounge Access Available",subtitle:"Properties with confirmed executive lounge access",hotels:loungeHotels});
+
+/* Suite Upgrade Friendly */
+const upgradeHotels=withReports.filter(h=>(hotelPerks[h.id]||[]).some(p=>p.category==="upgrade")).sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)).slice(0,20);
+if(upgradeHotels.length>=3)rows.push({title:"Suite Upgrade Friendly",subtitle:"Hotels where room upgrades have been reported",hotels:upgradeHotels});
+
+/* Late Checkout Champions */
+const lateHotels=withReports.filter(h=>(hotelPerks[h.id]||[]).some(p=>p.category==="late_checkout"&&p.details?.time_granted!=="No late checkout")).sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)).slice(0,20);
+if(lateHotels.length>=3)rows.push({title:"Late Checkout Champions",subtitle:"Properties that honor late checkout requests",hotels:lateHotels});
+
+/* Most Reported */
+const mostReported=[...withReports].sort((a,b)=>(pc[b.id]||0)-(pc[a.id]||0)).slice(0,20);
+if(mostReported.length>=3)rows.push({title:"Most Reported",subtitle:"Hotels with the most community perk reports",hotels:mostReported});
+
+/* Recently Reported — sort by most recent perk submission */
+const recentHotels=[...withReports].slice(0,20);
+if(recentHotels.length>=3)rows.push({title:"Recently Reported",subtitle:"Latest perk reports from the community",hotels:recentHotels});
+
+/* Regional rows — top regions by report count */
+const regionCounts={};withReports.forEach(h=>{const r=h.region;if(r){regionCounts[r]=(regionCounts[r]||0)+(pc[h.id]||0)}});
+const topRegions=Object.entries(regionCounts).sort((a,b)=>b[1]-a[1]).slice(0,3);
+topRegions.forEach(([region])=>{
+const rHotels=withReports.filter(h=>h.region===region).sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)).slice(0,20);
+if(rHotels.length>=3)rows.push({title:`Popular in ${region}`,subtitle:`Top-rated properties in ${region}`,hotels:rHotels});
+});
+
+return rows;
+},[hotels,pc,scores,hotelPerks]);
 const navBtn=(l,p)=><button onClick={()=>{nav(p)}} style={{background:page===p.slice(1)?"rgba(255,255,255,0.12)":"transparent",color:page===p.slice(1)?"#fff":"#94a3b8",border:"none",padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF,borderRadius:6,transition:"all 0.15s"}}>{l}</button>;
 const isHome=page==="home";
 return<div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:FF,display:"flex",flexDirection:"column"}}>
@@ -548,6 +620,7 @@ return<div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:FF,display:
 *:focus-visible{outline:2px solid #2563eb;outline-offset:2px;border-radius:4px}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 @keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.ps-row::-webkit-scrollbar{display:none}
 @media(max-width:768px){.ps-header{flex-direction:column!important;align-items:flex-start!important}.ps-nav{order:1;width:100%;justify-content:flex-start!important;margin-left:-16px}.ps-auth{order:2;width:100%;margin-top:2px;margin-left:-2px}.ps-detail-layout{flex-direction:column!important}.ps-tips-sidebar{flex:1 1 auto!important;position:static!important;width:100%!important;max-width:100%!important}}`}</style>
 <Toaster/>
 {showAuth&&<AuthModal onClose={()=>ssa(false)} onAuth={()=>supabase.auth.getUser().then(({data})=>su(data?.user))}/>}
@@ -584,16 +657,25 @@ return<div><button onClick={goHome} style={{background:"#fff",border:"1px solid 
 <Pagination current={bPage} total={bTotal} onChange={p=>{setPgNum(p);window.scrollTo({top:0,behavior:"smooth"})}}/>
 </div>})()}</>
 :ld?<div style={{padding:"60px 0"}}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{Array.from({length:12}).map((_,i)=><CardSkeleton key={i}/>)}</div></div>:<>{(()=>{const isSearching=!!search||!!bf||perkFilter.length>0||!!regionFilter;const scored=sortedFilt.filter(h=>(scores[h.id]||0)>0);const unscored=sortedFilt.filter(h=>!scores[h.id]);const showUnscored=isSearching||showAll;
-const totalPages=Math.ceil((showUnscored?unscored:scored).length>0?Math.ceil((isSearching?sortedFilt.length:showUnscored?unscored.length:0)/PAGE_SIZE):1);
+
+if(!isSearching&&curatedRows.length>0){
+/* Netflix-style curated rows */
+return<div style={{marginTop:42}}>
+{curatedRows.map((row,i)=><HotelRow key={i} title={row.title} subtitle={row.subtitle} hotels={row.hotels} perkCounts={pc} scores={scores} onSelect={openHotel}/>)}
+<div style={{height:1,background:"linear-gradient(to right,transparent,#e2e8f0,transparent)",margin:"16px 0 24px"}}/>
+<div style={{textAlign:"center"}}>
+<p style={{fontSize:13,color:"#94a3b8",fontFamily:FF,marginBottom:12}}>{hotels.length.toLocaleString()} total properties in database</p>
+<button onClick={()=>setSA(true)} style={{background:"#fff",color:"#0f172a",border:"2px solid #e2e8f0",borderRadius:8,padding:"10px 28px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FF,transition:"all 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#0f172a"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0"}}>Browse all properties</button>
+</div>
+{showAll&&<><div style={{marginTop:32,marginBottom:14}}><span style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>All {hotels.length.toLocaleString()} properties</span></div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{hotels.slice((pgNum-1)*PAGE_SIZE,pgNum*PAGE_SIZE).map(h=><HotelCard key={h.id} hotel={h} perkCounts={pc} score={scores[h.id]||0} onClick={()=>openHotel(h)}/>)}</div>
+<Pagination current={pgNum} total={Math.ceil(hotels.length/PAGE_SIZE)} onChange={p=>{setPgNum(p);window.scrollTo({top:0,behavior:"smooth"})}}/></>}
+</div>}
+else{
+/* Search/filter results — flat grid with pagination */
 return<><div style={{marginBottom:14,marginTop:42}}><span style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>{isSearching?`${sortedFilt.length} propert${sortedFilt.length!==1?"ies":"y"}`:`${scored.length} featured propert${scored.length!==1?"ies":"y"}`}</span></div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{(isSearching?sortedFilt.slice((pgNum-1)*PAGE_SIZE,pgNum*PAGE_SIZE):scored).map(h=><HotelCard key={h.id} hotel={h} perkCounts={pc} score={scores[h.id]||0} onClick={()=>openHotel(h)}/>)}</div>
 {isSearching&&<Pagination current={pgNum} total={Math.ceil(sortedFilt.length/PAGE_SIZE)} onChange={p=>{setPgNum(p);window.scrollTo({top:0,behavior:"smooth"})}}/>}
-{!isSearching&&unscored.length>0&&!showUnscored&&<div style={{textAlign:"center",marginTop:32}}><div style={{height:1,background:"linear-gradient(to right,transparent,#e2e8f0,transparent)",marginBottom:24}}/>
-<p style={{fontSize:13,color:"#94a3b8",fontFamily:FF,marginBottom:12}}>{unscored.length} more propert{unscored.length!==1?"ies":"y"} waiting for reports</p>
-<button onClick={()=>setSA(true)} style={{background:"#fff",color:"#0f172a",border:"2px solid #e2e8f0",borderRadius:8,padding:"10px 28px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FF,transition:"all 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#0f172a"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0"}}>View all properties</button></div>}
-{!isSearching&&showUnscored&&unscored.length>0&&<><div style={{height:1,background:"linear-gradient(to right,transparent,#e2e8f0,transparent)",margin:"32px 0 20px"}}/>
-<div style={{marginBottom:14}}><span style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>{unscored.length} more — no reports yet. Be the first to contribute</span></div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{unscored.slice((pgNum-1)*PAGE_SIZE,pgNum*PAGE_SIZE).map(h=><HotelCard key={h.id} hotel={h} perkCounts={pc} score={0} onClick={()=>openHotel(h)}/>)}</div>
-<Pagination current={pgNum} total={Math.ceil(unscored.length/PAGE_SIZE)} onChange={p=>{setPgNum(p);window.scrollTo({top:0,behavior:"smooth"})}}/></>}
-{!sortedFilt.length&&<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:40,marginBottom:12}}>🏨</div><h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:6}}>No hotels found</h3><p style={{fontSize:13,color:"#94a3b8",marginBottom:20}}>Try a different search or filter.</p><button onClick={()=>{ss("");sbf("");setPF([]);setRF("")}} style={BT()}>Clear Filters</button></div>}</>})()}</>}</div>
+{!sortedFilt.length&&<div style={{textAlign:"center",padding:"60px 20px"}}><h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:6}}>No hotels found</h3><p style={{fontSize:13,color:"#94a3b8",marginBottom:20}}>Try a different search or filter.</p><button onClick={()=>{ss("");sbf("");setPF([]);setRF("")}} style={BT()}>Clear Filters</button></div>}</>}
+})()}</>}</div>
 <Footer/></div>}
