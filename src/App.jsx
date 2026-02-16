@@ -167,15 +167,15 @@ function HotelRow({title,subtitle,hotels,perkCounts,scores,onSelect}){
 const ref=useRef(null);
 const scroll=(dir)=>{if(ref.current)ref.current.scrollBy({left:dir*300,behavior:"smooth"})};
 if(!hotels||!hotels.length)return null;
-return<div style={{marginBottom:36}}>
-<div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:12}}>
+return<div style={{marginBottom:40}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:16}}>
 <div><h3 style={{fontSize:17,fontWeight:700,color:"#0f172a",fontFamily:FF,margin:0}}>{title}</h3>
 {subtitle&&<p style={{fontSize:12,color:"#94a3b8",fontFamily:FF,margin:"4px 0 0"}}>{subtitle}</p>}</div>
 <div style={{display:"flex",gap:4,flexShrink:0}}>
 <button onClick={()=>scroll(-1)} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:6,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14,color:"#64748b",transition:"all 0.15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#0f172a"} onMouseLeave={e=>e.currentTarget.style.borderColor="#e2e8f0"}>←</button>
 <button onClick={()=>scroll(1)} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:6,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14,color:"#64748b",transition:"all 0.15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#0f172a"} onMouseLeave={e=>e.currentTarget.style.borderColor="#e2e8f0"}>→</button>
 </div></div>
-<div ref={ref} className="ps-row" style={{display:"flex",gap:12,overflowX:"auto",scrollbarWidth:"none",msOverflowStyle:"none",paddingBottom:4,scrollSnapType:"x mandatory"}}>
+<div ref={ref} className="ps-row" style={{display:"flex",gap:12,overflowX:"auto",scrollbarWidth:"none",msOverflowStyle:"none",padding:"4px 2px 8px",scrollSnapType:"x mandatory"}}>
 {hotels.map(h=>{const c=perkCounts[h.id]||0;const sc=scores[h.id]||0;return<div key={h.id} onClick={()=>onSelect(h)} style={{flex:"0 0 260px",scrollSnapAlign:"start",background:"#fff",borderRadius:10,padding:"18px 20px",border:"1px solid #e2e8f0",cursor:"pointer",transition:"all 0.15s",display:"flex",flexDirection:"column",justifyContent:"space-between",minHeight:140}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#0f172a";e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(15,23,42,0.08)"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none"}}>
 <div><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}><span style={{fontSize:9,fontWeight:700,color:"#94a3b8",fontFamily:FF,textTransform:"uppercase",letterSpacing:1.5}}>{h.brand}</span>{sc>0&&<span style={{fontSize:13,fontWeight:700,color:sc>=70?"#059669":sc>=40?"#d97706":"#dc2626",fontFamily:FF}}>{sc}</span>}</div>
 <div style={{fontSize:14,fontWeight:700,color:"#0f172a",fontFamily:FF,marginBottom:3,lineHeight:1.3}}>{h.name}</div><div style={{fontSize:11,color:"#94a3b8",fontFamily:FF}}>{h.location}</div></div>
@@ -660,7 +660,7 @@ return<div><button onClick={goHome} style={{background:"#fff",border:"1px solid 
 
 if(!isSearching&&curatedRows.length>0){
 /* Netflix-style curated rows */
-return<div style={{marginTop:42}}>
+return<div style={{marginTop:52}}>
 {curatedRows.map((row,i)=><HotelRow key={i} title={row.title} subtitle={row.subtitle} hotels={row.hotels} perkCounts={pc} scores={scores} onSelect={openHotel}/>)}
 <div style={{height:1,background:"linear-gradient(to right,transparent,#e2e8f0,transparent)",margin:"16px 0 24px"}}/>
 <div style={{textAlign:"center"}}>
