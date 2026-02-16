@@ -83,7 +83,7 @@ const getAccountAgeDays=u=>{if(!u?.created_at)return 0;return Math.floor((Date.n
 const isEmailVerified=u=>!!u?.email_confirmed_at;
 const EMAIL_GATE_DAYS=7;
 
-function usePath(){const[path,setPath]=useState(window.location.pathname);useEffect(()=>{const h=()=>setPath(window.location.pathname);window.addEventListener("popstate",h);return()=>window.removeEventListener("popstate",h)},[]);const nav=p=>{window.history.pushState({},"",p);setPath(p)};return[path,nav]}
+function usePath(){const[path,setPath]=useState(window.location.pathname);useEffect(()=>{const h=()=>{setPath(window.location.pathname);window.scrollTo(0,0)};window.addEventListener("popstate",h);return()=>window.removeEventListener("popstate",h)},[]);const nav=p=>{window.history.pushState({},"",p);setPath(p);window.scrollTo(0,0)};return[path,nav]}
 function useTitle(t){useEffect(()=>{document.title=t},[t])}
 
 /* Toast system */
@@ -98,34 +98,34 @@ function CardSkeleton(){return<div style={{background:"#fff",borderRadius:10,pad
 
 function ScoreBadge({score}){const c=score>=70?"#059669":score>=40?"#d97706":"#dc2626",bg=score>=70?"#ecfdf5":score>=40?"#fffbeb":"#fef2f2";return<div style={{display:"inline-flex",alignItems:"center",gap:4,background:bg,border:`1px solid ${c}22`,borderRadius:6,padding:"3px 10px"}}><span style={{fontSize:15,fontWeight:700,color:c,fontFamily:FF}}>{score}</span><span style={{fontSize:9,color:c,fontFamily:FF,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5}}>score</span></div>}
 
-/* Gated email display */
+/* Gated email display — styled for dark background */
 function GatedEmail({hotel,user,onNeedAuth}){
 const email=hotel.email;if(!email)return null;
-if(!user)return<div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#f0f9ff",borderRadius:6,border:"1px solid #bae6fd",cursor:"pointer"}} onClick={onNeedAuth}><span style={{fontSize:14}}>📧</span><span style={{fontSize:12,fontWeight:600,color:"#0369a1",fontFamily:FF}}>Hotel email available</span><span style={{fontSize:11,color:"#64748b",fontFamily:FF,marginLeft:8}}>Sign in to unlock</span></div>;
+if(!user)return<div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(255,255,255,0.06)",borderRadius:6,border:"1px solid rgba(255,255,255,0.1)",cursor:"pointer"}} onClick={onNeedAuth}><span style={{fontSize:13}}>📧</span><span style={{fontSize:12,fontWeight:600,color:"#94a3b8",fontFamily:FF}}>Hotel email available</span><span style={{fontSize:11,color:"#64748b",fontFamily:FF,marginLeft:6}}>— Sign in to unlock</span></div>;
 const verified=isEmailVerified(user);
-if(!verified)return<div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#fffbeb",borderRadius:6,border:"1px solid #fde68a"}}><span style={{fontSize:14}}>📧</span><span style={{fontSize:12,fontWeight:600,color:"#92400e",fontFamily:FF}}>Hotel email available</span><span style={{fontSize:11,color:"#92400e",fontFamily:FF,marginLeft:8}}>Verify your email to unlock</span></div>;
+if(!verified)return<div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(255,255,255,0.06)",borderRadius:6,border:"1px solid rgba(255,255,255,0.1)"}}><span style={{fontSize:13}}>📧</span><span style={{fontSize:12,fontWeight:600,color:"#94a3b8",fontFamily:FF}}>Hotel email available</span><span style={{fontSize:11,color:"#64748b",fontFamily:FF,marginLeft:6}}>— Verify your email to unlock</span></div>;
 const ageDays=getAccountAgeDays(user);const daysLeft=EMAIL_GATE_DAYS-ageDays;
-if(daysLeft>0)return<div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#f0f9ff",borderRadius:6,border:"1px solid #bae6fd"}}><span style={{fontSize:14}}>📧</span><div><span style={{fontSize:12,fontWeight:600,color:"#0369a1",fontFamily:FF}}>Hotel email unlocks in {daysLeft} day{daysLeft!==1?"s":""}</span><div style={{marginTop:4,background:"#e0f2fe",borderRadius:4,height:4,width:120}}><div style={{background:"#0369a1",borderRadius:4,height:4,width:`${(ageDays/EMAIL_GATE_DAYS)*100}%`,transition:"width 0.3s"}}/></div></div></div>;
-return<div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#ecfdf5",borderRadius:6,border:"1px solid #a7f3d0"}}><span style={{fontSize:14}}>📧</span><a href={`mailto:${email}`} style={{fontSize:13,fontWeight:600,color:"#059669",fontFamily:FF,textDecoration:"none"}}>{email}</a></div>}
+if(daysLeft>0)return<div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(255,255,255,0.06)",borderRadius:6,border:"1px solid rgba(255,255,255,0.1)"}}><span style={{fontSize:13}}>📧</span><div><span style={{fontSize:12,fontWeight:600,color:"#94a3b8",fontFamily:FF}}>Hotel email unlocks in {daysLeft} day{daysLeft!==1?"s":""}</span><div style={{marginTop:4,background:"rgba(255,255,255,0.1)",borderRadius:4,height:4,width:120}}><div style={{background:"#38bdf8",borderRadius:4,height:4,width:`${(ageDays/EMAIL_GATE_DAYS)*100}%`,transition:"width 0.3s"}}/></div></div></div>;
+return<div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"rgba(255,255,255,0.06)",borderRadius:6,border:"1px solid rgba(255,255,255,0.1)"}}><span style={{fontSize:13}}>📧</span><a href={`mailto:${email}`} style={{fontSize:13,fontWeight:600,color:"#38bdf8",fontFamily:FF,textDecoration:"none"}}>{email}</a></div>}
 
-/* Hotel info bar */
+/* Hotel info bar — styled for dark header */
 function HotelInfoBar({hotel,user,onNeedAuth}){
 const items=[];
 if(hotel.address)items.push({icon:"📍",text:hotel.address});
 if(hotel.phone)items.push({icon:"📞",text:hotel.phone,href:`tel:${hotel.phone}`});
 if(hotel.room_count)items.push({icon:"🏨",text:`${hotel.room_count} rooms`});
 if(hotel.country)items.push({icon:"🌍",text:`${hotel.country}${hotel.region?` · ${hotel.region}`:""}`});
-if(!items.length&&!hotel.email&&!hotel.marriott_code)return null;
-return<div style={{background:"#fff",borderRadius:10,padding:"16px 20px",border:"1px solid #e2e8f0",marginBottom:20}}>
-<div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:hotel.email||hotel.marriott_code?14:0}}>
-{items.map((it,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:"#475569",fontFamily:FF}}>
-<span style={{fontSize:14,flexShrink:0}}>{it.icon}</span>
-{it.href?<a href={it.href} style={{color:"#475569",textDecoration:"none"}}>{it.text}</a>:<span>{it.text}</span>}
+if(!items.length&&!hotel.email&&!hotel.marriott_code&&!hotel.website)return null;
+return<div style={{marginTop:20,paddingTop:20,borderTop:"1px solid rgba(255,255,255,0.08)"}}>
+{items.length>0&&<div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:14}}>
+{items.map((it,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:"#94a3b8",fontFamily:FF}}>
+<span style={{fontSize:13,flexShrink:0}}>{it.icon}</span>
+{it.href?<a href={it.href} style={{color:"#cbd5e1",textDecoration:"none"}}>{it.text}</a>:<span>{it.text}</span>}
 </div>)}
-</div>
+</div>}
 <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
-{hotel.marriott_code&&<a href={`https://www.marriott.com/reservation/rateListMenu.mi?propertyCode=${hotel.marriott_code}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,background:"#0f172a",color:"#fff",borderRadius:6,padding:"8px 16px",fontSize:12,fontWeight:700,fontFamily:FF,textDecoration:"none",transition:"all 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background="#1e293b"} onMouseLeave={e=>e.currentTarget.style.background="#0f172a"}>🔗 Book on Marriott.com</a>}
-{hotel.website&&<a href={hotel.website} target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:"#2563eb",fontFamily:FF,fontWeight:600,textDecoration:"none"}}>Hotel website ↗</a>}
+{hotel.marriott_code&&<a href={`https://www.marriott.com/hotels/travel/${hotel.marriott_code}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,background:"#fff",color:"#0f172a",borderRadius:6,padding:"8px 16px",fontSize:12,fontWeight:700,fontFamily:FF,textDecoration:"none",transition:"all 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.background="#e2e8f0"}} onMouseLeave={e=>{e.currentTarget.style.background="#fff"}}>Book on Marriott.com</a>}
+{hotel.website&&<a href={hotel.website} target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:"#94a3b8",fontFamily:FF,fontWeight:600,textDecoration:"none",transition:"color 0.15s"}} onMouseEnter={e=>e.currentTarget.style.color="#fff"} onMouseLeave={e=>e.currentTarget.style.color="#94a3b8"}>Hotel website</a>}
 </div>
 {hotel.email&&<div style={{marginTop:12}}><GatedEmail hotel={hotel} user={user} onNeedAuth={onNeedAuth}/></div>}
 </div>}
@@ -437,13 +437,17 @@ return<div><button onClick={onBack} style={{background:"#fff",border:"1px solid 
 <div style={{background:"#0f172a",borderRadius:12,padding:"36px 32px",marginBottom:28,color:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
 <div><p style={{fontSize:10,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:FF,margin:"0 0 8px"}}>{hotel.brand}</p><h1 style={{fontSize:30,fontWeight:700,margin:"0 0 6px",fontFamily:FD,lineHeight:1.2}}>{hotel.name}</h1><p style={{fontSize:14,color:"#94a3b8",fontFamily:FF,margin:0}}>{hotel.location}</p></div>
 {tr>0&&<ScoreBadge score={score}/>}</div>
-<div style={{display:"flex",gap:14,marginTop:24,flexWrap:"wrap"}}>{TIERS.map(t=><div key={t.key} style={{background:"rgba(255,255,255,0.05)",borderRadius:8,padding:"12px 18px",border:"1px solid rgba(255,255,255,0.08)"}}><div style={{fontSize:9,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1,marginBottom:4,fontFamily:FF}}>{t.label}</div><div style={{fontSize:22,fontWeight:700,color:"#fff",fontFamily:FD}}>{byTier[t.key]?.length||0} <span style={{fontSize:11,fontWeight:400,color:"#94a3b8",fontFamily:FF}}>perks</span></div></div>)}</div></div>
+<div style={{display:"flex",gap:14,marginTop:24,flexWrap:"wrap"}}>{TIERS.map(t=><div key={t.key} style={{background:"rgba(255,255,255,0.05)",borderRadius:8,padding:"12px 18px",border:"1px solid rgba(255,255,255,0.08)"}}><div style={{fontSize:9,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1,marginBottom:4,fontFamily:FF}}>{t.label}</div><div style={{fontSize:22,fontWeight:700,color:"#fff",fontFamily:FD}}>{byTier[t.key]?.length||0} <span style={{fontSize:11,fontWeight:400,color:"#94a3b8",fontFamily:FF}}>perks</span></div></div>)}</div>
 <HotelInfoBar hotel={hotel} user={user} onNeedAuth={onNeedAuth}/>
+</div>
 <div style={{display:"flex",gap:8,marginBottom:24,alignItems:"center",flexWrap:"wrap"}}>
-<span style={{fontSize:15,fontWeight:700,color:"#0f172a",fontFamily:FF}}>Perks Overview</span>
-<button onClick={()=>{if(!user){onNeedAuth();return}if(sf){resetForm()}else{ssf(true)}}} style={{marginLeft:"auto",background:"#fff",color:"#0f172a",border:"2px solid #0f172a",borderRadius:6,padding:"8px 20px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+ Add Perk</button></div>
+<span style={{fontSize:15,fontWeight:700,color:"#0f172a",fontFamily:FF}}>Perks Overview</span></div>
+{!sf&&<div onClick={()=>{if(!user){onNeedAuth();return}ssf(true)}} style={{background:"#f8fafc",borderRadius:10,padding:"14px 20px",border:"1px solid #e2e8f0",marginBottom:24,cursor:"pointer",display:"flex",alignItems:"center",gap:12,transition:"all 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#94a3b8";e.currentTarget.style.background="#f1f5f9"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.background="#f8fafc"}}>
+<div style={{width:32,height:32,borderRadius:"50%",background:"#e2e8f0",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:14}}>✍️</span></div>
+<span style={{fontSize:13,color:"#94a3b8",fontFamily:FF}}>Recently stayed here? Share what perks you received...</span>
+</div>}
 {sf&&<div style={{background:"#f8fafc",borderRadius:10,padding:28,border:"1px solid #e2e8f0",marginBottom:24}}>
-<h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:20}}>{editId?"Edit Perk":"Report Your Stay"}</h3>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,margin:0}}>{editId?"Edit Perk":"Report Your Stay"}</h3><button onClick={()=>{resetForm()}} style={{background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:20,fontFamily:FF,padding:"0 4px",lineHeight:1}}>×</button></div>
 <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:20}}><div style={{flex:"1 1 160px"}}><label style={LS}>Your Tier</label><select value={sT} onChange={e=>ssT(e.target.value)} style={IS}><option value="">Select...</option>{TIERS.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}</select></div>
 <div style={{flex:"1 1 200px"}}><label style={LS}>When did you stay?</label><div style={{display:"flex",gap:6}}><select value={sDate?sDate.split("-")[1]:""} onChange={e=>{const yr=sDate?sDate.split("-")[0]:String(new Date().getFullYear());if(e.target.value)ssDate(yr+"-"+e.target.value);else ssDate("")}} style={{...IS,flex:1}}><option value="">Month</option>{["01","02","03","04","05","06","07","08","09","10","11","12"].map((m,i)=>{const now=new Date();const yr=sDate?parseInt(sDate.split("-")[0]):now.getFullYear();const disabled=yr===now.getFullYear()&&(i+1)>now.getMonth()+1;return<option key={m} value={m} disabled={disabled}>{["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][i]}</option>})}</select>
 <select value={sDate?sDate.split("-")[0]:""} onChange={e=>{const mo=sDate?sDate.split("-")[1]:"01";if(e.target.value){const now=new Date();const yr=parseInt(e.target.value);if(yr===now.getFullYear()&&parseInt(mo)>now.getMonth()+1)ssDate(e.target.value+"-"+String(now.getMonth()+1).padStart(2,"0"));else ssDate(e.target.value+"-"+mo)}else ssDate("")}} style={{...IS,flex:1}}><option value="">Year</option>{Array.from({length:6},(_,i)=>new Date().getFullYear()-i).map(y=><option key={y} value={y}>{y}</option>)}</select></div></div>
@@ -521,8 +525,8 @@ sh(allHotels);const{data:rp}=await supabase.from("perk_reports").select("hotel_i
 useEffect(()=>{if(window.google){sml(true);return}const s=document.createElement("script");s.src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD2TOWNd9KNVyavscRXX1xsKV0LM6Xf8NQ&libraries=places";s.async=true;s.onload=()=>sml(true);document.head.appendChild(s)},[]);
 useEffect(()=>{supabase.auth.getUser().then(({data})=>{if(data?.user)su(data.user)});supabase.auth.onAuthStateChange((_,s)=>{su(s?.user||null)});loadH()},[]);
 useEffect(()=>{if(path.startsWith("/profile/")){spid(path.split("/profile/")[1])}},[path]);
-const goHome=()=>{spid(null);nav("/")};const viewProf=id=>{spid(id);nav("/profile/"+id)};
-const openHotel=h=>{const slug=h.slug||mkSlug(h.name);nav("/hotel/"+slug)};
+const goHome=()=>{spid(null);nav("/");window.scrollTo(0,0)};const viewProf=id=>{spid(id);nav("/profile/"+id);window.scrollTo(0,0)};
+const openHotel=h=>{const slug=h.slug||mkSlug(h.name);nav("/hotel/"+slug);window.scrollTo(0,0)};
 const PERK_FILTERS=[
 {key:"free_breakfast",label:"🍳 Free Breakfast",icon:"🍳",test:perks=>perks?.some(p=>p.category==="breakfast"&&(p.details?.cost==="Complimentary"||!p.details?.cost))},
 {key:"lounge_open",label:"🍸 Lounge Open",icon:"🍸",test:perks=>perks?.some(p=>p.category==="lounge"&&p.details?.status!=="Closed"&&p.details?.status!=="No lounge")},
