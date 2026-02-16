@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { supabase } from "./supabaseClient";
 const TIERS=[{key:"ambassador",label:"Ambassador Elite",color:"#1a1a1a"},{key:"titanium",label:"Titanium Elite",color:"#6b7280"},{key:"platinum",label:"Platinum Elite",color:"#9ca3af"}];
 const CATS=[{key:"breakfast",icon:"🍳",label:"Breakfast"},{key:"lounge",icon:"🍸",label:"Lounge Access"},{key:"drinks",icon:"☕",label:"Drinks & Coffee"},{key:"upgrade",icon:"⬆️",label:"Room Upgrades"},{key:"gift",icon:"🎁",label:"Welcome Gift"},{key:"late_checkout",icon:"🕐",label:"Late Checkout"},{key:"spa",icon:"💆",label:"Spa & Wellness"},{key:"parking",icon:"🅿️",label:"Parking"},{key:"fnb_credit",icon:"💳",label:"F&B Credit"},{key:"housekeeping",icon:"🧹",label:"Housekeeping"},{key:"bathroom",icon:"🚿",label:"Bathroom"},{key:"other",icon:"✨",label:"Other"}];
@@ -77,6 +77,11 @@ const LS={display:"block",fontSize:10,fontWeight:600,color:"#94a3b8",fontFamily:
 const IS={width:"100%",padding:"12px 14px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:14,fontFamily:FF,background:"#fff",color:"#0f172a",outline:"none",boxSizing:"border-box",transition:"border-color 0.15s"};
 const BT=(bg="#0f172a",fg="#fff")=>({background:bg,color:fg,border:"none",borderRadius:6,padding:"10px 22px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF,letterSpacing:0.2,transition:"all 0.15s"});
 const TAG=(bg,fg)=>({display:"inline-flex",alignItems:"center",fontSize:9,fontWeight:700,fontFamily:FF,padding:"2px 6px",borderRadius:3,background:bg,color:fg,textTransform:"uppercase",letterSpacing:0.5});
+const PAGE_SIZE=50;
+const haversine=(lat1,lon1,lat2,lon2)=>{const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))};
+const getAccountAgeDays=u=>{if(!u?.created_at)return 0;return Math.floor((Date.now()-new Date(u.created_at).getTime())/86400000)};
+const isEmailVerified=u=>!!u?.email_confirmed_at;
+const EMAIL_GATE_DAYS=7;
 
 function usePath(){const[path,setPath]=useState(window.location.pathname);useEffect(()=>{const h=()=>setPath(window.location.pathname);window.addEventListener("popstate",h);return()=>window.removeEventListener("popstate",h)},[]);const nav=p=>{window.history.pushState({},"",p);setPath(p)};return[path,nav]}
 function useTitle(t){useEffect(()=>{document.title=t},[t])}
@@ -92,6 +97,70 @@ function Skeleton({w="100%",h=16,r=6}){return<div style={{width:w,height:h,borde
 function CardSkeleton(){return<div style={{background:"#fff",borderRadius:10,padding:"20px 22px",border:"1px solid #e2e8f0"}}><Skeleton w="60%" h={10}/><div style={{height:8}}/><Skeleton w="85%" h={16}/><div style={{height:4}}/><Skeleton w="50%" h={12}/><div style={{height:14}}/><Skeleton w="30%" h={14}/></div>}
 
 function ScoreBadge({score}){const c=score>=70?"#059669":score>=40?"#d97706":"#dc2626",bg=score>=70?"#ecfdf5":score>=40?"#fffbeb":"#fef2f2";return<div style={{display:"inline-flex",alignItems:"center",gap:4,background:bg,border:`1px solid ${c}22`,borderRadius:6,padding:"3px 10px"}}><span style={{fontSize:15,fontWeight:700,color:c,fontFamily:FF}}>{score}</span><span style={{fontSize:9,color:c,fontFamily:FF,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5}}>score</span></div>}
+
+/* Gated email display */
+function GatedEmail({hotel,user,onNeedAuth}){
+const email=hotel.email;if(!email)return null;
+if(!user)return<div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#f0f9ff",borderRadius:6,border:"1px solid #bae6fd",cursor:"pointer"}} onClick={onNeedAuth}><span style={{fontSize:14}}>📧</span><span style={{fontSize:12,fontWeight:600,color:"#0369a1",fontFamily:FF}}>Hotel email available</span><span style={{fontSize:11,color:"#64748b",fontFamily:FF,marginLeft:8}}>Sign in to unlock</span></div>;
+const verified=isEmailVerified(user);
+if(!verified)return<div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#fffbeb",borderRadius:6,border:"1px solid #fde68a"}}><span style={{fontSize:14}}>📧</span><span style={{fontSize:12,fontWeight:600,color:"#92400e",fontFamily:FF}}>Hotel email available</span><span style={{fontSize:11,color:"#92400e",fontFamily:FF,marginLeft:8}}>Verify your email to unlock</span></div>;
+const ageDays=getAccountAgeDays(user);const daysLeft=EMAIL_GATE_DAYS-ageDays;
+if(daysLeft>0)return<div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#f0f9ff",borderRadius:6,border:"1px solid #bae6fd"}}><span style={{fontSize:14}}>📧</span><div><span style={{fontSize:12,fontWeight:600,color:"#0369a1",fontFamily:FF}}>Hotel email unlocks in {daysLeft} day{daysLeft!==1?"s":""}</span><div style={{marginTop:4,background:"#e0f2fe",borderRadius:4,height:4,width:120}}><div style={{background:"#0369a1",borderRadius:4,height:4,width:`${(ageDays/EMAIL_GATE_DAYS)*100}%`,transition:"width 0.3s"}}/></div></div></div>;
+return<div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#ecfdf5",borderRadius:6,border:"1px solid #a7f3d0"}}><span style={{fontSize:14}}>📧</span><a href={`mailto:${email}`} style={{fontSize:13,fontWeight:600,color:"#059669",fontFamily:FF,textDecoration:"none"}}>{email}</a></div>}
+
+/* Hotel info bar */
+function HotelInfoBar({hotel,user,onNeedAuth}){
+const items=[];
+if(hotel.address)items.push({icon:"📍",text:hotel.address});
+if(hotel.phone)items.push({icon:"📞",text:hotel.phone,href:`tel:${hotel.phone}`});
+if(hotel.room_count)items.push({icon:"🏨",text:`${hotel.room_count} rooms`});
+if(hotel.country)items.push({icon:"🌍",text:`${hotel.country}${hotel.region?` · ${hotel.region}`:""}`});
+if(!items.length&&!hotel.email&&!hotel.marriott_code)return null;
+return<div style={{background:"#fff",borderRadius:10,padding:"16px 20px",border:"1px solid #e2e8f0",marginBottom:20}}>
+<div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:hotel.email||hotel.marriott_code?14:0}}>
+{items.map((it,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:6,fontSize:13,color:"#475569",fontFamily:FF}}>
+<span style={{fontSize:14,flexShrink:0}}>{it.icon}</span>
+{it.href?<a href={it.href} style={{color:"#475569",textDecoration:"none"}}>{it.text}</a>:<span>{it.text}</span>}
+</div>)}
+</div>
+<div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+{hotel.marriott_code&&<a href={`https://www.marriott.com/reservation/rateListMenu.mi?propertyCode=${hotel.marriott_code}`} target="_blank" rel="noopener noreferrer" style={{display:"inline-flex",alignItems:"center",gap:6,background:"#0f172a",color:"#fff",borderRadius:6,padding:"8px 16px",fontSize:12,fontWeight:700,fontFamily:FF,textDecoration:"none",transition:"all 0.15s"}} onMouseEnter={e=>e.currentTarget.style.background="#1e293b"} onMouseLeave={e=>e.currentTarget.style.background="#0f172a"}>🔗 Book on Marriott.com</a>}
+{hotel.website&&<a href={hotel.website} target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:"#2563eb",fontFamily:FF,fontWeight:600,textDecoration:"none"}}>Hotel website ↗</a>}
+</div>
+{hotel.email&&<div style={{marginTop:12}}><GatedEmail hotel={hotel} user={user} onNeedAuth={onNeedAuth}/></div>}
+</div>}
+
+/* Nearby hotels */
+function NearbyHotels({hotel,allHotels,perkCounts,onSelect}){
+if(!hotel.latitude||!hotel.longitude)return null;
+const nearby=useMemo(()=>allHotels.filter(h=>h.id!==hotel.id&&h.latitude&&h.longitude).map(h=>({...h,dist:haversine(hotel.latitude,hotel.longitude,h.latitude,h.longitude)})).filter(h=>h.dist<50).sort((a,b)=>a.dist-b.dist).slice(0,8),[hotel.id,hotel.latitude,hotel.longitude,allHotels]);
+if(!nearby.length)return null;
+return<div style={{marginTop:32}}>
+<h3 style={{fontSize:16,fontWeight:700,color:"#0f172a",fontFamily:FF,marginBottom:14}}>Nearby Marriott Properties</h3>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
+{nearby.map(h=><div key={h.id} onClick={()=>onSelect(h)} style={{background:"#fff",borderRadius:8,padding:"14px 16px",border:"1px solid #e2e8f0",cursor:"pointer",transition:"all 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#0f172a";e.currentTarget.style.transform="translateY(-1px)"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.transform="translateY(0)"}}>
+<div style={{fontSize:9,fontWeight:700,color:"#94a3b8",fontFamily:FF,textTransform:"uppercase",letterSpacing:1.2,marginBottom:4}}>{h.brand}</div>
+<div style={{fontSize:13,fontWeight:700,color:"#0f172a",fontFamily:FF,marginBottom:2,lineHeight:1.3}}>{h.name}</div>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}}>
+<span style={{fontSize:11,color:"#64748b",fontFamily:FF}}>{h.dist<1?`${Math.round(h.dist*1000)}m away`:`${h.dist.toFixed(1)} km`}</span>
+<span style={{fontSize:11,color:"#0f172a",fontWeight:700,fontFamily:FF}}>{perkCounts[h.id]||0} reports</span>
+</div>
+{h.room_count&&<div style={{fontSize:10,color:"#94a3b8",fontFamily:FF,marginTop:4}}>{h.room_count} rooms</div>}
+</div>)}
+</div></div>}
+
+/* Pagination */
+function Pagination({current,total,onChange}){
+if(total<=1)return null;
+const pages=[];const show=5;let start=Math.max(1,current-Math.floor(show/2));let end=Math.min(total,start+show-1);if(end-start<show-1)start=Math.max(1,end-show+1);
+for(let i=start;i<=end;i++)pages.push(i);
+return<div style={{display:"flex",gap:4,justifyContent:"center",marginTop:28,alignItems:"center"}}>
+<button onClick={()=>onChange(current-1)} disabled={current===1} style={{...BT("#f1f5f9","#64748b"),padding:"6px 12px",fontSize:12,opacity:current===1?0.4:1}}>← Prev</button>
+{start>1&&<><button onClick={()=>onChange(1)} style={{...BT("#fff","#64748b"),padding:"6px 10px",fontSize:12,border:"1px solid #e2e8f0"}}>1</button>{start>2&&<span style={{color:"#94a3b8",fontSize:12}}>…</span>}</>}
+{pages.map(p=><button key={p} onClick={()=>onChange(p)} style={{...BT(p===current?"#0f172a":"#fff",p===current?"#fff":"#64748b"),padding:"6px 10px",fontSize:12,border:p===current?"none":"1px solid #e2e8f0"}}>{p}</button>)}
+{end<total&&<>{end<total-1&&<span style={{color:"#94a3b8",fontSize:12}}>…</span>}<button onClick={()=>onChange(total)} style={{...BT("#fff","#64748b"),padding:"6px 10px",fontSize:12,border:"1px solid #e2e8f0"}}>{total}</button></>}
+<button onClick={()=>onChange(current+1)} disabled={current===total} style={{...BT("#f1f5f9","#64748b"),padding:"6px 12px",fontSize:12,opacity:current===total?0.4:1}}>Next →</button>
+</div>}
 
 /* Character counter */
 function CharCount({val,max}){const r=max-val.length;return<span style={{fontSize:10,color:r<20?"#dc2626":"#94a3b8",fontFamily:FF,float:"right"}}>{r}</span>}
@@ -320,7 +389,7 @@ return<div><button onClick={onBack} style={{background:"#fff",border:"1px solid 
 {!ld&&!perks.length&&<div style={{textAlign:"center",padding:40,color:"#94a3b8",fontSize:13,fontFamily:FF}}>{isOwn?"You haven't submitted any reports yet. Start contributing!":"This user hasn't submitted any reports yet."}</div>}
 </div>}
 
-function HotelDetail({hotel,user,onBack,onNeedAuth}){const[sf,ssf]=useState(false),[perks,sp]=useState([]),[cmts,sc]=useState([]),[ld,sl]=useState(true),[err,ser]=useState("");
+function HotelDetail({hotel,user,onBack,onNeedAuth,allHotels,perkCounts,onSelectHotel}){const[sf,ssf]=useState(false),[perks,sp]=useState([]),[cmts,sc]=useState([]),[ld,sl]=useState(true),[err,ser]=useState("");
 const[sT,ssT]=useState(""),[sDate,ssDate]=useState(""),[sub,sSub]=useState(false);
 const[sBT,ssBT]=useState(""),[sPC,ssPC]=useState("");
 const emptyEntry=()=>({category:"",description:"",upgrade_type:"",category_details:{}});
@@ -369,6 +438,7 @@ return<div><button onClick={onBack} style={{background:"#fff",border:"1px solid 
 <div><p style={{fontSize:10,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:FF,margin:"0 0 8px"}}>{hotel.brand}</p><h1 style={{fontSize:30,fontWeight:700,margin:"0 0 6px",fontFamily:FD,lineHeight:1.2}}>{hotel.name}</h1><p style={{fontSize:14,color:"#94a3b8",fontFamily:FF,margin:0}}>{hotel.location}</p></div>
 {tr>0&&<ScoreBadge score={score}/>}</div>
 <div style={{display:"flex",gap:14,marginTop:24,flexWrap:"wrap"}}>{TIERS.map(t=><div key={t.key} style={{background:"rgba(255,255,255,0.05)",borderRadius:8,padding:"12px 18px",border:"1px solid rgba(255,255,255,0.08)"}}><div style={{fontSize:9,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1,marginBottom:4,fontFamily:FF}}>{t.label}</div><div style={{fontSize:22,fontWeight:700,color:"#fff",fontFamily:FD}}>{byTier[t.key]?.length||0} <span style={{fontSize:11,fontWeight:400,color:"#94a3b8",fontFamily:FF}}>perks</span></div></div>)}</div></div>
+<HotelInfoBar hotel={hotel} user={user} onNeedAuth={onNeedAuth}/>
 <div style={{display:"flex",gap:8,marginBottom:24,alignItems:"center",flexWrap:"wrap"}}>
 <span style={{fontSize:15,fontWeight:700,color:"#0f172a",fontFamily:FF}}>Perks Overview</span>
 <button onClick={()=>{if(!user){onNeedAuth();return}if(sf){resetForm()}else{ssf(true)}}} style={{marginLeft:"auto",background:"#fff",color:"#0f172a",border:"2px solid #0f172a",borderRadius:6,padding:"8px 20px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+ Add Perk</button></div>
@@ -406,12 +476,14 @@ return<div><button onClick={onBack} style={{background:"#fff",border:"1px solid 
 <select value={cT} onChange={e=>scT(e.target.value)} style={{...IS,fontSize:12,padding:"8px 10px",marginBottom:8}}><option value="">Your tier...</option>{TIERS.map(t=><option key={t.key} value={t.key}>{t.label}</option>)}</select>
 <textarea value={cX} onChange={e=>scX(e.target.value.slice(0,MAX_TIP))} placeholder="Share a tip..." style={{...IS,fontSize:12,padding:"8px 10px",minHeight:50,resize:"vertical",marginBottom:8}} maxLength={MAX_TIP}/>
 <button onClick={subCmt} style={{...BT(),padding:"7px 16px",fontSize:12}}>Post Tip</button></div>
-</div></div></div>}</div>}
+</div></div></div>}
+<NearbyHotels hotel={hotel} allHotels={allHotels||[]} perkCounts={perkCounts||{}} onSelect={onSelectHotel||(()=>{})}/>
+</div>}
 
 function HotelCard({hotel,perkCounts,score,onClick}){const c=perkCounts[hotel.id]||0;return<div onClick={onClick} tabIndex={0} role="button" aria-label={`${hotel.name} — ${c} perk reports`} onKeyDown={e=>e.key==="Enter"&&onClick()} style={{background:"#fff",borderRadius:10,padding:"20px 22px",border:"1px solid #e2e8f0",cursor:"pointer",transition:"all 0.15s",display:"flex",flexDirection:"column",justifyContent:"space-between"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#0f172a";e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 8px 24px rgba(15,23,42,0.08)"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none"}}>
 <div><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}><span style={{fontSize:9,fontWeight:700,color:"#94a3b8",fontFamily:FF,textTransform:"uppercase",letterSpacing:1.5}}>{hotel.brand}</span>{score>0&&<span style={{fontSize:13,fontWeight:700,color:score>=70?"#059669":score>=40?"#d97706":"#dc2626",fontFamily:FF}}>{score}</span>}</div>
 <div style={{fontSize:15,fontWeight:700,color:"#0f172a",fontFamily:FF,marginBottom:3,lineHeight:1.3}}>{hotel.name}</div><div style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>{hotel.location}</div></div>
-<div style={{fontSize:12,color:"#64748b",fontFamily:FF,display:"flex",alignItems:"center",gap:4,marginTop:14,paddingTop:12,borderTop:"1px solid #f1f5f9"}}><span style={{color:"#0f172a",fontWeight:700,fontSize:15}}>{c}</span> perk reports</div></div>}
+<div style={{fontSize:12,color:"#64748b",fontFamily:FF,display:"flex",alignItems:"center",gap:4,marginTop:14,paddingTop:12,borderTop:"1px solid #f1f5f9"}}><span style={{color:"#0f172a",fontWeight:700,fontSize:15}}>{c}</span> perk reports{hotel.room_count&&<span style={{marginLeft:"auto",fontSize:10,color:"#94a3b8"}}>{hotel.room_count} rooms</span>}</div></div>}
 
 function AddPerkModal({onClose,user,onNeedAuth,hotels,onSelect}){const[q,sq]=useState("");
 const matches=q.trim().length<2?[]:hotels.filter(h=>{const w=q.toLowerCase().split(/\s+/).filter(x=>x.length>1);const hay=[h.name,h.location,h.region||"",h.brand].join(" ").toLowerCase();return w.every(x=>hay.includes(x))}).slice(0,8);
@@ -430,12 +502,15 @@ return<div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.7)",zInd
 
 
 export default function App(){const[path,nav]=usePath();const[user,su]=useState(null),[hotels,sh]=useState([]),[pc,spc]=useState({}),[scores,ssc]=useState({}),[search,ss]=useState(""),[bf,sbf]=useState(""),[showAuth,ssa]=useState(false),[showAdd,ssad]=useState(false),[profId,spid]=useState(null),[ld,sld]=useState(true),[ml,sml]=useState(!!window.google),[showAll,setSA]=useState(false),[perkFilter,setPF]=useState([]),[hotelPerks,setHP]=useState({});
+const[pgNum,setPgNum]=useState(1),[regionFilter,setRF]=useState("");
 
 const hotelSlug=path.startsWith("/hotel/")?path.split("/hotel/")[1]:null;
+const citySlug=path.startsWith("/city/")?decodeURIComponent(path.split("/city/")[1]):null;
+const brandSlug=path.startsWith("/brand/")?decodeURIComponent(path.split("/brand/")[1]):null;
 const sel=hotelSlug?hotels.find(h=>(h.slug||mkSlug(h.name))===hotelSlug):null;
-const page=path==="/leaderboard"?"leaderboard":path==="/map"?"map":path==="/search"?"search":path==="/compare"?"compare":path.startsWith("/profile/")?"profile":hotelSlug?"hotel":"home";
+const page=path==="/leaderboard"?"leaderboard":path==="/map"?"map":path==="/search"?"search":path==="/compare"?"compare":path.startsWith("/profile/")?"profile":citySlug?"city":brandSlug?"brand":hotelSlug?"hotel":"home";
 
-const pageTitle=page==="hotel"&&sel?`${sel.name} — Elite Perk Benefits | PerkSnob`:page==="leaderboard"?"Leaderboard | PerkSnob":page==="map"?"Map View | PerkSnob":page==="search"?"Search Perks | PerkSnob":page==="compare"?"Compare Hotels | PerkSnob":"PerkSnob — Marriott Elite Benefits, Crowdsourced";
+const pageTitle=page==="hotel"&&sel?`${sel.name} — Elite Perk Benefits | PerkSnob`:page==="city"&&citySlug?`Marriott Hotels in ${citySlug.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase())} | PerkSnob`:page==="brand"&&brandSlug?`${brandSlug.replace(/-/g," ").replace(/\b\w/g,c=>c.toUpperCase())} Hotels | PerkSnob`:page==="leaderboard"?"Leaderboard | PerkSnob":page==="map"?"Map View | PerkSnob":page==="search"?"Search Perks | PerkSnob":page==="compare"?"Compare Hotels | PerkSnob":"PerkSnob — Marriott Elite Benefits, Crowdsourced";
 useTitle(pageTitle);
 
 const loadH=async()=>{sld(true);try{const{data,error}=await supabase.from("hotels").select("*").order("name");if(error)throw error;sh(data||[]);const{data:rp}=await supabase.from("perk_reports").select("hotel_id,category,category_details");const c={},cats={},hp={};(rp||[]).forEach(r=>{c[r.hotel_id]=(c[r.hotel_id]||0)+1;if(!cats[r.hotel_id])cats[r.hotel_id]=new Set();cats[r.hotel_id].add(r.category);if(!hp[r.hotel_id])hp[r.hotel_id]=[];hp[r.hotel_id].push({category:r.category,details:r.category_details})});spc(c);setHP(hp);const sc={};Object.keys(c).forEach(id=>{sc[id]=pscore(c[id],cats[id]?.size||0)});ssc(sc)}catch(e){console.error("Failed to load hotels:",e)}sld(false)};
@@ -455,7 +530,7 @@ const PERK_FILTERS=[
 {key:"fnb_credit",label:"💳 F&B Credit",icon:"💳",test:perks=>perks?.some(p=>p.category==="fnb_credit")},
 {key:"welcome_gift",label:"🎁 Welcome Gift",icon:"🎁",test:perks=>perks?.some(p=>p.category==="gift"&&p.details?.gift_type!=="Nothing")},
 ];
-const filt=hotels.filter(h=>{const words=search.toLowerCase().split(/\s+/).filter(w=>w.length>0);const hay=[h.name,h.location,h.region||"",h.brand].join(" ").toLowerCase();const ms=!search||words.every(w=>hay.includes(w));const mb=!bf||h.brand===bf;const mp=!perkFilter.length||perkFilter.every(pk=>PERK_FILTERS.find(f=>f.key===pk)?.test(hotelPerks[h.id]));return ms&&mb&&mp});
+const filt=hotels.filter(h=>{const words=search.toLowerCase().split(/\s+/).filter(w=>w.length>0);const hay=[h.name,h.location,h.region||"",h.brand,h.country||""].join(" ").toLowerCase();const ms=!search||words.every(w=>hay.includes(w));const mb=!bf||h.brand===bf;const mr=!regionFilter||h.region===regionFilter;const mp=!perkFilter.length||perkFilter.every(pk=>PERK_FILTERS.find(f=>f.key===pk)?.test(hotelPerks[h.id]));return ms&&mb&&mr&&mp});
 const sortedFilt=[...filt].sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)||(pc[b.id]||0)-(pc[a.id]||0)||a.name.localeCompare(b.name));
 const ub=[...new Set(hotels.map(h=>h.brand))].sort();
 const navBtn=(l,p)=><button onClick={()=>{nav(p)}} style={{background:page===p.slice(1)?"rgba(255,255,255,0.12)":"transparent",color:page===p.slice(1)?"#fff":"#94a3b8",border:"none",padding:"8px 16px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF,borderRadius:6,transition:"all 0.15s"}}>{l}</button>;
@@ -479,20 +554,39 @@ return<div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:FF,display:
 <button onClick={()=>user?ssad(true):ssa(true)} style={{background:"#fff",color:"#0f172a",border:"none",borderRadius:6,padding:"7px 16px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+ Add Perk</button></div></div>
 {isHome&&<div style={{paddingTop:24,paddingBottom:8}}><h1 style={{fontSize:52,fontWeight:700,color:"#fff",margin:"0 0 14px",lineHeight:1.02,maxWidth:520,fontFamily:FD}}>Titanium, Platinum, Ambassador Elite Perks &amp; Benefits</h1>
 <p style={{fontSize:16,color:"#94a3b8",margin:"0 0 36px",maxWidth:460,lineHeight:1.6,fontFamily:FF}}>Real Marriott Bonvoy elite benefits reported by real guests. Know what you're getting before you book.</p>
-<div style={{display:"flex",gap:10,flexWrap:"wrap"}}><div style={{flex:"1 1 320px",position:"relative"}}><input type="text" value={search} onChange={e=>ss(e.target.value)} placeholder="Search hotels or destinations..." aria-label="Search hotels" style={{width:"100%",padding:"14px 40px 14px 18px",borderRadius:8,border:"1px solid #1e293b",background:"#1e293b",color:"#e2e8f0",fontSize:14,fontFamily:FF,outline:"none",boxSizing:"border-box"}}/>
+<div style={{display:"flex",gap:10,flexWrap:"wrap"}}><div style={{flex:"1 1 320px",position:"relative"}}><input type="text" value={search} onChange={e=>{ss(e.target.value);setPgNum(1)}} placeholder="Search hotels or destinations..." aria-label="Search hotels" style={{width:"100%",padding:"14px 40px 14px 18px",borderRadius:8,border:"1px solid #1e293b",background:"#1e293b",color:"#e2e8f0",fontSize:14,fontFamily:FF,outline:"none",boxSizing:"border-box"}}/>
 {search&&<button onClick={()=>ss("")} aria-label="Clear search" style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#94a3b8",fontSize:18,cursor:"pointer",padding:0,lineHeight:1,fontFamily:FF}}>×</button>}</div>
-<select value={bf} onChange={e=>sbf(e.target.value)} aria-label="Filter by brand" style={{padding:"14px 42px 14px 18px",borderRadius:8,border:"1px solid #1e293b",background:"#1e293b",color:"#e2e8f0",fontSize:13,fontFamily:FF,outline:"none",cursor:"pointer",minWidth:120,maxWidth:200,WebkitAppearance:"none",MozAppearance:"none",appearance:"none",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 18px center"}}><option value="" style={{background:"#fff",color:"#0f172a"}}>All Brands</option>{ub.map(b=><option key={b} value={b} style={{background:"#fff",color:"#0f172a"}}>{b}</option>)}</select></div>
+<select value={bf} onChange={e=>sbf(e.target.value)} aria-label="Filter by brand" style={{padding:"14px 42px 14px 18px",borderRadius:8,border:"1px solid #1e293b",background:"#1e293b",color:"#e2e8f0",fontSize:13,fontFamily:FF,outline:"none",cursor:"pointer",minWidth:120,maxWidth:200,WebkitAppearance:"none",MozAppearance:"none",appearance:"none",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 18px center"}}><option value="" style={{background:"#fff",color:"#0f172a"}}>All Brands</option>{ub.map(b=><option key={b} value={b} style={{background:"#fff",color:"#0f172a"}}>{b}</option>)}</select>
+<select value={regionFilter} onChange={e=>setRF(e.target.value)} aria-label="Filter by region" style={{padding:"14px 42px 14px 18px",borderRadius:8,border:"1px solid #1e293b",background:"#1e293b",color:"#e2e8f0",fontSize:13,fontFamily:FF,outline:"none",cursor:"pointer",minWidth:120,maxWidth:200,WebkitAppearance:"none",MozAppearance:"none",appearance:"none",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 18px center"}}><option value="" style={{background:"#fff",color:"#0f172a"}}>All Regions</option>{[...new Set(hotels.map(h=>h.region).filter(Boolean))].sort().map(r=><option key={r} value={r} style={{background:"#fff",color:"#0f172a"}}>{r}</option>)}</select></div>
 <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:14}}><span style={{fontSize:11,color:"#64748b",fontFamily:FF,alignSelf:"center",marginRight:4}}>Filter by perk:</span>{PERK_FILTERS.map(f=>{const active=perkFilter.includes(f.key);const count=Object.keys(hotelPerks).filter(id=>f.test(hotelPerks[id])).length;return<button key={f.key} onClick={()=>setPF(active?perkFilter.filter(k=>k!==f.key):[...perkFilter,f.key])} style={{background:active?"#fff":"rgba(255,255,255,0.08)",color:active?"#0f172a":"#94a3b8",border:active?"1px solid #fff":"1px solid rgba(255,255,255,0.1)",borderRadius:20,padding:"5px 12px",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:FF,transition:"all 0.15s",display:"flex",alignItems:"center",gap:4}}>{f.label}{count>0&&<span style={{fontSize:9,opacity:0.7}}>({count})</span>}</button>})}{perkFilter.length>0&&<button onClick={()=>setPF([])} style={{background:"none",border:"none",color:"#94a3b8",fontSize:11,cursor:"pointer",fontFamily:FF,textDecoration:"underline"}}>Clear filters</button>}</div>
 </div>}</div></div>
 <div style={{flex:1,maxWidth:1100,margin:isHome?"-28px auto 0":"16px auto 0",padding:"0 28px 60px",position:"relative",width:"100%"}}>
-{page==="leaderboard"?<Leaderboard onClose={goHome} onProfile={viewProf}/>:page==="map"?<>{!ml?<div style={{textAlign:"center",padding:60,color:"#94a3b8"}}>Loading map...</div>:<MapView hotels={filt} perkCounts={pc} onSelect={openHotel}/>}</>:page==="search"?<><button onClick={goHome} style={{background:"#fff",border:"1px solid #e2e8f0",cursor:"pointer",fontSize:13,color:"#334155",fontWeight:600,fontFamily:FF,padding:"8px 16px",marginBottom:24,borderRadius:6}}>← Back</button><PerkSearch user={user} onNeedAuth={()=>ssa(true)}/></>:page==="compare"?<Comparison hotels={hotels} onClose={goHome}/>:page==="profile"&&profId?<UserProfile userId={profId} currentUser={user} onBack={goHome} hotels={hotels}/>:page==="hotel"&&sel?<HotelDetail hotel={sel} user={user} onBack={goHome} onNeedAuth={()=>ssa(true)}/>:page==="hotel"&&hotelSlug&&!ld&&!sel?<div style={{textAlign:"center",padding:60}}><div style={{fontSize:40,marginBottom:12}}>🏨</div><h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:6}}>Hotel not found</h3><p style={{fontSize:13,color:"#94a3b8",marginBottom:20}}>This property may not exist yet.</p><button onClick={goHome} style={BT()}>← Back to all hotels</button></div>:ld?<div style={{padding:"60px 0"}}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{Array.from({length:12}).map((_,i)=><CardSkeleton key={i}/>)}</div></div>:<>{(()=>{const isSearching=!!search||!!bf||perkFilter.length>0;const scored=sortedFilt.filter(h=>(scores[h.id]||0)>0);const unscored=sortedFilt.filter(h=>!scores[h.id]);const showUnscored=isSearching||showAll;
+{page==="leaderboard"?<Leaderboard onClose={goHome} onProfile={viewProf}/>:page==="map"?<>{!ml?<div style={{textAlign:"center",padding:60,color:"#94a3b8"}}>Loading map...</div>:<MapView hotels={filt} perkCounts={pc} onSelect={openHotel}/>}</>:page==="search"?<><button onClick={goHome} style={{background:"#fff",border:"1px solid #e2e8f0",cursor:"pointer",fontSize:13,color:"#334155",fontWeight:600,fontFamily:FF,padding:"8px 16px",marginBottom:24,borderRadius:6}}>← Back</button><PerkSearch user={user} onNeedAuth={()=>ssa(true)}/></>:page==="compare"?<Comparison hotels={hotels} onClose={goHome}/>:page==="profile"&&profId?<UserProfile userId={profId} currentUser={user} onBack={goHome} hotels={hotels}/>:page==="hotel"&&sel?<HotelDetail hotel={sel} user={user} onBack={goHome} onNeedAuth={()=>ssa(true)} allHotels={hotels} perkCounts={pc} onSelectHotel={openHotel}/>:page==="hotel"&&hotelSlug&&!ld&&!sel?<div style={{textAlign:"center",padding:60}}><div style={{fontSize:40,marginBottom:12}}>🏨</div><h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:6}}>Hotel not found</h3><p style={{fontSize:13,color:"#94a3b8",marginBottom:20}}>This property may not exist yet.</p><button onClick={goHome} style={BT()}>← Back to all hotels</button></div>
+:page==="city"&&citySlug?<>{(()=>{const cityName=citySlug.replace(/-/g," ");const cityHotels=hotels.filter(h=>(h.location||h.city||"").toLowerCase().includes(cityName.toLowerCase()));const cityBrands=[...new Set(cityHotels.map(h=>h.brand))].sort();const cPage=pgNum;const cTotal=Math.ceil(cityHotels.length/PAGE_SIZE);const cSlice=cityHotels.slice((cPage-1)*PAGE_SIZE,cPage*PAGE_SIZE);
+return<div><button onClick={goHome} style={{background:"#fff",border:"1px solid #e2e8f0",cursor:"pointer",fontSize:13,color:"#334155",fontWeight:600,fontFamily:FF,padding:"8px 16px",marginBottom:24,borderRadius:6}}>← Back</button>
+<div style={{background:"#0f172a",borderRadius:12,padding:36,marginBottom:28,color:"#fff"}}><p style={{fontSize:10,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:FF}}>Destination</p><h1 style={{fontSize:34,fontWeight:700,margin:"0 0 6px",fontFamily:FD}}>Marriott Hotels in {cityName.replace(/\b\w/g,c=>c.toUpperCase())}</h1><p style={{fontSize:14,color:"#94a3b8",fontFamily:FF,margin:0}}>{cityHotels.length} propert{cityHotels.length!==1?"ies":"y"} · {cityBrands.length} brand{cityBrands.length!==1?"s":""}</p></div>
+<div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:20}}>{cityBrands.map(b=><span key={b} style={{...TAG("#f1f5f9","#334155"),fontSize:10,padding:"4px 10px"}}>{b} ({cityHotels.filter(h=>h.brand===b).length})</span>)}</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{cSlice.map(h=><HotelCard key={h.id} hotel={h} perkCounts={pc} score={scores[h.id]||0} onClick={()=>openHotel(h)}/>)}</div>
+<Pagination current={cPage} total={cTotal} onChange={p=>{setPgNum(p);window.scrollTo({top:0,behavior:"smooth"})}}/>
+</div>})()}</>
+:page==="brand"&&brandSlug?<>{(()=>{const brandName=brandSlug.replace(/-/g," ");const brandHotels=hotels.filter(h=>(h.brand||"").toLowerCase()===brandName.toLowerCase()).sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)||(pc[b.id]||0)-(pc[a.id]||0));const regions=[...new Set(brandHotels.map(h=>h.region).filter(Boolean))].sort();const reported=brandHotels.filter(h=>(pc[h.id]||0)>0).length;const bPage=pgNum;const bTotal=Math.ceil(brandHotels.length/PAGE_SIZE);const bSlice=brandHotels.slice((bPage-1)*PAGE_SIZE,bPage*PAGE_SIZE);
+return<div><button onClick={goHome} style={{background:"#fff",border:"1px solid #e2e8f0",cursor:"pointer",fontSize:13,color:"#334155",fontWeight:600,fontFamily:FF,padding:"8px 16px",marginBottom:24,borderRadius:6}}>← Back</button>
+<div style={{background:"#0f172a",borderRadius:12,padding:36,marginBottom:28,color:"#fff"}}><p style={{fontSize:10,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:2,marginBottom:8,fontFamily:FF}}>Brand</p><h1 style={{fontSize:34,fontWeight:700,margin:"0 0 6px",fontFamily:FD}}>{brandHotels[0]?.brand||brandName.replace(/\b\w/g,c=>c.toUpperCase())}</h1><p style={{fontSize:14,color:"#94a3b8",fontFamily:FF,margin:0}}>{brandHotels.length} propert{brandHotels.length!==1?"ies":"y"} worldwide · {reported} with reports</p></div>
+<div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:20}}>{regions.map(r=><span key={r} style={{...TAG("#f1f5f9","#334155"),fontSize:10,padding:"4px 10px"}}>{r} ({brandHotels.filter(h=>h.region===r).length})</span>)}</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{bSlice.map(h=><HotelCard key={h.id} hotel={h} perkCounts={pc} score={scores[h.id]||0} onClick={()=>openHotel(h)}/>)}</div>
+<Pagination current={bPage} total={bTotal} onChange={p=>{setPgNum(p);window.scrollTo({top:0,behavior:"smooth"})}}/>
+</div>})()}</>
+:ld?<div style={{padding:"60px 0"}}><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{Array.from({length:12}).map((_,i)=><CardSkeleton key={i}/>)}</div></div>:<>{(()=>{const isSearching=!!search||!!bf||perkFilter.length>0||!!regionFilter;const scored=sortedFilt.filter(h=>(scores[h.id]||0)>0);const unscored=sortedFilt.filter(h=>!scores[h.id]);const showUnscored=isSearching||showAll;
+const totalPages=Math.ceil((showUnscored?unscored:scored).length>0?Math.ceil((isSearching?sortedFilt.length:showUnscored?unscored.length:0)/PAGE_SIZE):1);
 return<><div style={{marginBottom:14,marginTop:42}}><span style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>{isSearching?`${sortedFilt.length} propert${sortedFilt.length!==1?"ies":"y"}`:`${scored.length} featured propert${scored.length!==1?"ies":"y"}`}</span></div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{(isSearching?sortedFilt:scored).map(h=><HotelCard key={h.id} hotel={h} perkCounts={pc} score={scores[h.id]||0} onClick={()=>openHotel(h)}/>)}</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{(isSearching?sortedFilt.slice((pgNum-1)*PAGE_SIZE,pgNum*PAGE_SIZE):scored).map(h=><HotelCard key={h.id} hotel={h} perkCounts={pc} score={scores[h.id]||0} onClick={()=>openHotel(h)}/>)}</div>
+{isSearching&&<Pagination current={pgNum} total={Math.ceil(sortedFilt.length/PAGE_SIZE)} onChange={p=>{setPgNum(p);window.scrollTo({top:0,behavior:"smooth"})}}/>}
 {!isSearching&&unscored.length>0&&!showUnscored&&<div style={{textAlign:"center",marginTop:32}}><div style={{height:1,background:"linear-gradient(to right,transparent,#e2e8f0,transparent)",marginBottom:24}}/>
 <p style={{fontSize:13,color:"#94a3b8",fontFamily:FF,marginBottom:12}}>{unscored.length} more propert{unscored.length!==1?"ies":"y"} waiting for reports</p>
 <button onClick={()=>setSA(true)} style={{background:"#fff",color:"#0f172a",border:"2px solid #e2e8f0",borderRadius:8,padding:"10px 28px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:FF,transition:"all 0.15s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor="#0f172a"}} onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0"}}>View all properties</button></div>}
 {!isSearching&&showUnscored&&unscored.length>0&&<><div style={{height:1,background:"linear-gradient(to right,transparent,#e2e8f0,transparent)",margin:"32px 0 20px"}}/>
-<div style={{marginBottom:14}}><span style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>No reports yet — be the first to contribute</span></div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{unscored.map(h=><HotelCard key={h.id} hotel={h} perkCounts={pc} score={0} onClick={()=>openHotel(h)}/>)}</div></>}
-{!sortedFilt.length&&<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:40,marginBottom:12}}>🏨</div><h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:6}}>No hotels found</h3><p style={{fontSize:13,color:"#94a3b8",marginBottom:20}}>Try a different search or filter.</p><button onClick={()=>{ss("");sbf("");setPF([])}} style={BT()}>Clear Filters</button></div>}</>})()}</>}</div>
+<div style={{marginBottom:14}}><span style={{fontSize:12,color:"#94a3b8",fontFamily:FF}}>{unscored.length} more — no reports yet. Be the first to contribute</span></div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:10}}>{unscored.slice((pgNum-1)*PAGE_SIZE,pgNum*PAGE_SIZE).map(h=><HotelCard key={h.id} hotel={h} perkCounts={pc} score={0} onClick={()=>openHotel(h)}/>)}</div>
+<Pagination current={pgNum} total={Math.ceil(unscored.length/PAGE_SIZE)} onChange={p=>{setPgNum(p);window.scrollTo({top:0,behavior:"smooth"})}}/></>}
+{!sortedFilt.length&&<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:40,marginBottom:12}}>🏨</div><h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:6}}>No hotels found</h3><p style={{fontSize:13,color:"#94a3b8",marginBottom:20}}>Try a different search or filter.</p><button onClick={()=>{ss("");sbf("");setPF([]);setRF("")}} style={BT()}>Clear Filters</button></div>}</>})()}</>}</div>
 <Footer/></div>}
