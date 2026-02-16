@@ -516,7 +516,7 @@ useTitle(pageTitle);
 const loadH=async()=>{sld(true);try{
 /* Supabase default limit is 1000 — paginate to load all hotels */
 let allHotels=[];let from=0;const step=1000;
-while(true){const{data,error}=await supabase.from("hotels").select("*").order("name").range(from,from+step-1);if(error)throw error;if(!data||!data.length)break;allHotels=allHotels.concat(data);if(data.length<step)break;from+=step}
+while(true){const{data,error}=await supabase.from("hotels").select("*").eq("status","approved").order("name").range(from,from+step-1);if(error)throw error;if(!data||!data.length)break;allHotels=allHotels.concat(data);if(data.length<step)break;from+=step}
 sh(allHotels);const{data:rp}=await supabase.from("perk_reports").select("hotel_id,category,category_details");const c={},cats={},hp={};(rp||[]).forEach(r=>{c[r.hotel_id]=(c[r.hotel_id]||0)+1;if(!cats[r.hotel_id])cats[r.hotel_id]=new Set();cats[r.hotel_id].add(r.category);if(!hp[r.hotel_id])hp[r.hotel_id]=[];hp[r.hotel_id].push({category:r.category,details:r.category_details})});spc(c);setHP(hp);const sc={};Object.keys(c).forEach(id=>{sc[id]=pscore(c[id],cats[id]?.size||0)});ssc(sc)}catch(e){console.error("Failed to load hotels:",e)}sld(false)};
 useEffect(()=>{if(window.google){sml(true);return}const s=document.createElement("script");s.src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD2TOWNd9KNVyavscRXX1xsKV0LM6Xf8NQ&libraries=places";s.async=true;s.onload=()=>sml(true);document.head.appendChild(s)},[]);
 useEffect(()=>{supabase.auth.getUser().then(({data})=>{if(data?.user)su(data.user)});supabase.auth.onAuthStateChange((_,s)=>{su(s?.user||null)});loadH()},[]);
