@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { supabase } from "./supabaseClient";
-const TIERS=[{key:"ambassador",label:"Ambassador Elite",color:"#1a1a1a"},{key:"titanium",label:"Titanium Elite",color:"#6b7280"},{key:"platinum",label:"Platinum Elite",color:"#9ca3af"}];
-const CATS=[{key:"breakfast",icon:"🍳",label:"Breakfast"},{key:"lounge",icon:"🍸",label:"Lounge Access"},{key:"drinks",icon:"☕",label:"Drinks & Coffee"},{key:"upgrade",icon:"⬆️",label:"Room Upgrades"},{key:"gift",icon:"🎁",label:"Welcome Gift"},{key:"late_checkout",icon:"🕐",label:"Late Checkout"},{key:"spa",icon:"💆",label:"Spa & Wellness"},{key:"parking",icon:"🅿️",label:"Parking"},{key:"fnb_credit",icon:"💳",label:"F&B Credit"},{key:"housekeeping",icon:"🧹",label:"Housekeeping"},{key:"bathroom",icon:"🚿",label:"Bathroom"},{key:"other",icon:"✨",label:"Other"}];
-const BRANDS=["The Ritz-Carlton","St. Regis","W Hotels","EDITION","The Luxury Collection","JW Marriott"];
+const TIERS=[{key:"ambassador",label:"Ambassador Elite",color:"#1a1a1a"},{key:"titanium",label:"Titanium Elite",color:"#6b7280"},{key:"platinum",label:"Platinum Elite",color:"#9ca3af"},{key:"gold",label:"Gold Elite",color:"#d97706"},{key:"silver",label:"Silver Elite",color:"#a3a3a3"}];
+const CATS=[{key:"breakfast",icon:"🍳",label:"Breakfast"},{key:"lounge",icon:"🍸",label:"Lounge Access"},{key:"drinks",icon:"☕",label:"Drinks & Coffee"},{key:"upgrade",icon:"⬆️",label:"Room Upgrades"},{key:"gift",icon:"🎁",label:"Welcome Gift"},{key:"late_checkout",icon:"🕐",label:"Late Checkout"},{key:"spa",icon:"💆",label:"Spa & Wellness"},{key:"parking",icon:"🅿️",label:"Parking"},{key:"fnb_credit",icon:"💳",label:"F&B Credit"},{key:"housekeeping",icon:"🧹",label:"Housekeeping"},{key:"bathroom",icon:"🚿",label:"Bathroom"},{key:"wifi",icon:"📶",label:"WiFi & Internet"},{key:"shower",icon:"🚰",label:"Shower & Water Pressure"},{key:"security",icon:"🔒",label:"Room Security"},{key:"pool",icon:"🏊",label:"Pool & Fitness"},{key:"staff_service",icon:"🤝",label:"Staff & Service Quality"},{key:"restaurant",icon:"🍽️",label:"Restaurant & Bar Hours"},{key:"other",icon:"✨",label:"Other"}];
+const BRANDS=["The Ritz-Carlton","St. Regis","W Hotels","EDITION","The Luxury Collection","JW Marriott","Westin","Sheraton","Marriott","Autograph Collection","Tribute Portfolio","Design Hotels"];
 const BOOKING_TYPES=["Direct (Marriott Bonvoy)","Points","Amex FHR","Virtuoso","STARS","Corporate","Employee (MMF, MMP, etc.)","Credit Card (e.g. AmEx Travel)","3rd Party (e.g. Priceline)","Other"];
 const UPGRADE_TYPES=["Same category, better room","Higher category","Suite upgrade"];
 const CATEGORY_FIELDS={
@@ -57,10 +57,43 @@ drinks:[
 {key:"drink_type",label:"What's offered?",type:"select",options:["In-room coffee machine","Lobby café/bar","Lounge access","Complimentary at restaurant","Minibar credit","Welcome drinks"]},
 {key:"machine_type",label:"Machine",type:"text",placeholder:"e.g. Nespresso, Illy, Keurig",showIf:d=>d.drink_type==="In-room coffee machine"},
 {key:"drink_detail",label:"Details",type:"text",placeholder:"e.g. 2 free drinks at lobby bar per night"}],
+wifi:[
+{key:"speed",label:"Speed quality",type:"select",options:["Excellent (50+ Mbps)","Good (20–50 Mbps)","Acceptable (10–20 Mbps)","Slow (under 10 Mbps)","Unusable"]},
+{key:"elite_faster",label:"Elite faster internet?",type:"select",options:["Yes, noticeably faster","Same as regular","Didn't notice a difference"]},
+{key:"coverage",label:"Coverage in room",type:"select",options:["Strong throughout","Weak in some spots","Dropped frequently"]},
+{key:"ports_blocked",label:"Gaming/VPN ports blocked?",type:"select",options:["No, all open","Yes, some blocked","Didn't test"]}],
+shower:[
+{key:"pressure",label:"Water pressure",type:"select",options:["Excellent","Good","Weak","Very weak"]},
+{key:"shower_type",label:"Shower type",type:"select",options:["Fixed rainfall","Handheld","Both fixed & handheld","Tub/shower combo"]},
+{key:"hot_water",label:"Hot water",type:"select",options:["Consistent","Takes a while","Inconsistent","Not hot enough"]}],
+security:[
+{key:"deadbolt",label:"Deadbolt on door?",type:"select",options:["Yes","No"]},
+{key:"chain_latch",label:"Chain/latch lock?",type:"select",options:["Yes","No"]},
+{key:"peephole",label:"Peephole?",type:"select",options:["Yes","No"]},
+{key:"safe",label:"In-room safe?",type:"select",options:["Yes, electronic","Yes, key","No"]},
+{key:"security_detail",label:"Other notes",type:"text",placeholder:"e.g. Well-lit hallways, security camera in lobby"}],
+pool:[
+{key:"pool_open",label:"Pool open?",type:"select",options:["Yes","No, closed","Seasonal","Under renovation"]},
+{key:"pool_type",label:"Type",type:"select",options:["Indoor","Outdoor","Both","Rooftop"]},
+{key:"pool_quality",label:"Quality",type:"rating",max:5},
+{key:"gym_quality",label:"Gym/fitness quality",type:"rating",max:5},
+{key:"gym_hours",label:"Gym hours",type:"text",placeholder:"e.g. 24/7, 6am–10pm"}],
+staff_service:[
+{key:"honors_status",label:"Did staff honor your elite status?",type:"select",options:["Yes, proactively recognized","Yes, when mentioned","No, seemed unaware","Indifferent"]},
+{key:"checkin_experience",label:"Check-in experience",type:"select",options:["Excellent","Good","Average","Poor"]},
+{key:"app_requests",label:"Did they honor app messages/requests?",type:"select",options:["Yes, promptly","Partially","Ignored","Didn't submit any"]},
+{key:"housekeeping_dnd",label:"Respected DND sign?",type:"select",options:["Yes","No, knocked anyway","No, entered room"]},
+{key:"overall_service",label:"Overall service quality",type:"rating",max:5}],
+restaurant:[
+{key:"hours_accurate",label:"Are posted hours accurate?",type:"select",options:["Yes","No, closes early sometimes","No, random closures","Reduced from advertised"]},
+{key:"days_closed",label:"Closed any days?",type:"text",placeholder:"e.g. Closed Sundays & Mondays"},
+{key:"room_service",label:"Room service available?",type:"select",options:["Yes, full menu","Yes, limited menu","No room service"]},
+{key:"room_service_quality",label:"Room service quality",type:"rating",max:5,showIf:d=>d.room_service?.startsWith("Yes")},
+{key:"restaurant_detail",label:"Notes",type:"text",placeholder:"e.g. Bar closes at 10pm despite advertising midnight"}],
 other:[]
 };
 const MAX_DESC=500,MAX_NAME=30,MAX_TIP=300;
-const gc=k=>CATS.find(c=>c.key===k)||CATS[CATS.length-1],gt=k=>TIERS.find(t=>t.key===k)||TIERS[2];
+const gc=k=>CATS.find(c=>c.key===k)||CATS[CATS.length-1],gt=k=>TIERS.find(t=>t.key===k)||TIERS[TIERS.length-1];
 const cc=c=>c==="high"?"#1a1a1a":c==="medium"?"#6b7280":"#9ca3af",cl=c=>c==="high"?"Well established":c==="medium"?"Frequently reported":"Few reports",cv=n=>n>=8?"high":n>=4?"medium":"low";
 const be=b=>b==="Snob Supreme"?"👑":b==="Elite Reporter"?"⭐":b==="Perk Scout"?"🔍":b==="Contributor"?"✍️":"🆕";
 const ta=d=>{const s=Math.floor((Date.now()-new Date(d))/1000);if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";if(s<2592000)return Math.floor(s/86400)+"d ago";return Math.floor(s/2592000)+"mo ago"};
@@ -450,7 +483,7 @@ const now=Date.now();if(now-lastVote.current<2000){showToast("Please wait betwee
 if(val===0){await supabase.from("perk_votes").delete().eq("perk_id",p.id).eq("user_id",user.id);showToast("Vote removed.")}
 else{const{error}=await supabase.from("perk_votes").upsert({perk_id:p.id,user_id:user.id,vote:val},{onConflict:"perk_id,user_id"});if(error){showToast(error.message.includes("self")||error.message.includes("own")?"You can't vote on your own report":error.message,"error");return}showToast(val===1?"Upvoted!":"Downvoted.")}
 load()};
-const byTier={};const tierUp={ambassador:["ambassador","titanium","platinum"],titanium:["titanium","platinum"],platinum:["platinum"]};TIERS.forEach(t=>{const show=tierUp[t.key]||[t.key];byTier[t.key]=perks.filter(p=>show.includes(p.elite_tier))});const tr=perks.length,catC=new Set(perks.map(p=>p.category)).size,score=pscore(tr,catC);
+const byTier={};const tierUp={ambassador:["ambassador","titanium","platinum","gold","silver"],titanium:["titanium","platinum","gold","silver"],platinum:["platinum","gold","silver"],gold:["gold","silver"],silver:["silver"]};TIERS.forEach(t=>{const show=tierUp[t.key]||[t.key];byTier[t.key]=perks.filter(p=>show.includes(p.elite_tier))});const tr=perks.length,catC=new Set(perks.map(p=>p.category)).size,score=pscore(tr,catC);
 if(err)return<div style={{textAlign:"center",padding:60}}><p style={{color:"#dc2626",fontFamily:FF,marginBottom:12}}>{err}</p><button onClick={load} style={BT()}>Retry</button><button onClick={onBack} style={{...BT("#e2e8f0","#64748b"),marginLeft:8}}>← Back</button></div>;
 return<div><button onClick={onBack} style={{background:"#fff",border:"1px solid #e2e8f0",cursor:"pointer",fontSize:13,color:"#334155",fontWeight:600,fontFamily:FF,padding:"8px 16px",marginBottom:24,borderRadius:6}}>← Back</button>
 <div style={{background:"#0f172a",borderRadius:12,padding:"36px 32px",marginBottom:28,color:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
@@ -552,10 +585,13 @@ const PERK_FILTERS=[
 {key:"suite_upgrade",label:"⬆️ Suite Upgrades",icon:"⬆️",test:perks=>perks?.some(p=>p.category==="upgrade")},
 {key:"late_checkout",label:"🕐 Late Checkout",icon:"🕐",test:perks=>perks?.some(p=>p.category==="late_checkout"&&p.details?.time_granted!=="No late checkout")},
 {key:"free_parking",label:"🅿️ Free Parking",icon:"🅿️",test:perks=>perks?.some(p=>p.category==="parking"&&p.details?.included==="Yes, free")},
-{key:"solid_bathroom",label:"🚿 Solid Bathroom Doors",icon:"🚿",test:perks=>perks?.some(p=>p.category==="bathroom"&&(p.details?.door_type==="Solid wood/standard"||p.details?.door_type==="Pocket door"))},
+{key:"solid_bathroom",label:"🚿 Solid Doors",icon:"🚿",test:perks=>perks?.some(p=>p.category==="bathroom"&&(p.details?.door_type==="Solid wood/standard"||p.details?.door_type==="Pocket door"))},
 {key:"spa_perks",label:"💆 Spa Benefits",icon:"💆",test:perks=>perks?.some(p=>p.category==="spa"&&p.details?.spa_type!=="Nothing")},
 {key:"fnb_credit",label:"💳 F&B Credit",icon:"💳",test:perks=>perks?.some(p=>p.category==="fnb_credit")},
 {key:"welcome_gift",label:"🎁 Welcome Gift",icon:"🎁",test:perks=>perks?.some(p=>p.category==="gift"&&p.details?.gift_type!=="Nothing")},
+{key:"good_wifi",label:"📶 Good WiFi",icon:"📶",test:perks=>perks?.some(p=>p.category==="wifi"&&(p.details?.speed==="Excellent (50+ Mbps)"||p.details?.speed==="Good (20–50 Mbps)"))},
+{key:"pool_open",label:"🏊 Pool Open",icon:"🏊",test:perks=>perks?.some(p=>p.category==="pool"&&p.details?.pool_open==="Yes")},
+{key:"great_staff",label:"🤝 Great Staff",icon:"🤝",test:perks=>perks?.some(p=>p.category==="staff_service"&&p.details?.honors_status?.startsWith("Yes"))},
 ];
 const filt=hotels.filter(h=>{const words=search.toLowerCase().split(/\s+/).filter(w=>w.length>0);const hay=[h.name,h.location,h.region||"",h.brand,h.country||""].join(" ").toLowerCase();const ms=!search||words.every(w=>hay.includes(w));const mb=!bf||h.brand===bf;const mr=!regionFilter||h.region===regionFilter;const mp=!perkFilter.length||perkFilter.every(pk=>PERK_FILTERS.find(f=>f.key===pk)?.test(hotelPerks[h.id]));return ms&&mb&&mr&&mp});
 const sortedFilt=[...filt].sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)||(pc[b.id]||0)-(pc[a.id]||0)||a.name.localeCompare(b.name));
