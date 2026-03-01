@@ -17,8 +17,13 @@ create table public.perk_reports (
   hotel_id uuid references public.hotels(id) on delete cascade not null,
   user_id uuid references auth.users(id) on delete set null,
   display_name text not null default 'Anonymous',
-  elite_tier text not null check (elite_tier in ('platinum', 'titanium', 'ambassador')),
-  category text not null check (category in ('breakfast', 'lounge', 'drinks', 'upgrade', 'gift', 'late_checkout', 'spa', 'parking', 'fnb_credit', 'other')),
+  elite_tier text not null check (elite_tier in ('ambassador', 'titanium', 'platinum', 'gold', 'silver')),
+  category text not null check (category in (
+    'breakfast', 'lounge', 'drinks', 'upgrade', 'gift',
+    'late_checkout', 'spa', 'parking', 'fnb_credit',
+    'housekeeping', 'bathroom', 'other',
+    'wifi', 'shower', 'security', 'pool', 'staff_service', 'restaurant'
+  )),
   description text not null,
   created_at timestamp with time zone default now()
 );
@@ -29,7 +34,7 @@ create table public.comments (
   hotel_id uuid references public.hotels(id) on delete cascade not null,
   user_id uuid references auth.users(id) on delete set null,
   display_name text not null default 'Anonymous',
-  elite_tier text not null check (elite_tier in ('platinum', 'titanium', 'ambassador')),
+  elite_tier text not null check (elite_tier in ('ambassador', 'titanium', 'platinum', 'gold', 'silver')),
   text text not null,
   created_at timestamp with time zone default now()
 );

@@ -14,6 +14,15 @@
 6. Click **Run** (the green play button)
 7. You should see "Success" — this creates all your tables and seeds 25 hotels
 
+### Existing database upgrade (required for 5 tiers + 18 categories):
+If your project already exists and was created before March 1, 2026:
+1. Open `supabase/migrations/20260301_expand_perk_constraints.sql`
+2. Paste into Supabase SQL Editor
+3. Click **Run**
+4. This updates `perk_reports` and `comments` constraints for:
+   - Tiers: Ambassador, Titanium, Platinum, Gold, Silver
+   - Categories: 18 total (including WiFi, Shower, Security, Pool, Staff Service, Restaurant)
+
 ### Enable Google sign-in (optional but recommended):
 1. In Supabase sidebar → **Authentication** → **Providers**
 2. Toggle on **Google**
@@ -62,9 +71,9 @@ git push -u origin main
 
 ## IMPORTANT: Update your Supabase key
 
-Before deploying, make sure to edit `src/supabaseClient.js` and replace
-`PASTE_YOUR_FULL_PUBLISHABLE_KEY_HERE` with your actual full publishable key
-from Supabase → Settings → API Keys.
+Before deploying, make sure `src/supabaseClient.js` points to your own
+Supabase project URL and publishable anon key from:
+Supabase → **Settings** → **API Keys**.
 
 ---
 
