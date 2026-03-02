@@ -37,6 +37,21 @@ If your project already exists and was created before March 1, 2026:
    `insert into public.app_admins (user_id) values ('YOUR_AUTH_USER_UUID') on conflict do nothing;`
 5. Admins can then use the `/admin/requests` page to approve/reject requests
 
+### Optional: enable email alerts on new hotel requests
+1. Open `supabase/migrations/20260305_hotel_request_alerts.sql`
+2. Paste into Supabase SQL Editor
+3. Click **Run**
+4. Set function secrets in Supabase:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `RESEND_API_KEY`
+   - `APP_BASE_URL` (optional)
+   - `HOTEL_REQUEST_ALERT_TO` (set to `rei+1@llazani.com`)
+   - `HOTEL_REQUEST_ALERT_FROM` (optional)
+5. Deploy function:
+   `supabase functions deploy hotel-request-alert --project-ref xzdpfnyvsgzdiuuamujv`
+6. New request submissions will trigger an email with a direct link to `/admin/requests`
+
 ### Optional: enable follows + monthly digest data model
 1. Open `supabase/migrations/20260304_follow_hotels_and_digest_prefs.sql`
 2. Paste into Supabase SQL Editor

@@ -102,6 +102,25 @@ const ts=v=>{if(!v)return 0;const t=new Date(v).getTime();return Number.isNaN(t)
 const sortPerksByStayDate=rows=>[...(rows||[])].sort((a,b)=>{const as=ts(a.stay_date||a.latest_stay),bs=ts(b.stay_date||b.latest_stay);if(bs!==as)return bs-as;return ts(b.created_at)-ts(a.created_at)});
 const dname=u=>u?.user_metadata?.display_name||u?.email?.split("@")[0]||"Anonymous";
 const pscore=(r,c)=>Math.min(100,r*3+c*8);
+const normalizeReportOutcome=v=>{if(v===undefined||v===null)return null;const s=String(v).trim().toLowerCase();if(["received","yes","y","true","provided","granted","available","included"].includes(s))return"received";if(["not_received","not-received","no","n","false","missing","denied","unavailable","not provided","not_provided","not included","not_included","did_not_receive","did-not-receive"].includes(s))return"not_received";return null};
+const IMPLIED_NEGATIVE_BY_CATEGORY={
+breakfast:d=>d?.cost==="Not included",
+lounge:d=>d?.status==="Closed"||d?.status==="No lounge"||d?.status==="Renovating",
+upgrade:d=>d?.how_granted==="Not granted",
+gift:d=>d?.gift_type==="Nothing",
+late_checkout:d=>d?.time_granted==="No late checkout"||d?.how_lco==="Denied",
+spa:d=>d?.spa_type==="Nothing",
+parking:d=>d?.included==="No, full price",
+housekeeping:d=>d?.frequency==="Not offered",
+wifi:d=>d?.speed==="Unusable",
+shower:d=>d?.pressure==="Very weak",
+pool:d=>d?.pool_open==="No, closed"||d?.pool_open==="Under renovation",
+staff_service:d=>d?.honors_status==="No, seemed unaware"||d?.honors_status==="Indifferent"
+};
+const perkOutcome=r=>{const details=r?.category_details&&typeof r.category_details==="object"?r.category_details:{};const explicit=normalizeReportOutcome(details.report_outcome??r?.report_outcome??details.outcome);if(explicit)return explicit;const implied=IMPLIED_NEGATIVE_BY_CATEGORY[r?.category];if(implied&&implied(details))return"not_received";return"received"};
+const likelihoodColor=s=>s>=70?"#059669":s>=40?"#d97706":"#dc2626";
+const likelihoodBg=s=>s>=70?"#ecfdf5":s>=40?"#fffbeb":"#fef2f2";
+const likelihoodLabel=s=>s>=85?"Very likely":s>=65?"Likely":s>=45?"Mixed":s>=25?"Unlikely":"Rarely reported";
 const mkSlug=n=>n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
 const FF="'DM Sans',sans-serif";const FD="'Playfair Display',serif";
 const sanitize=s=>{if(!s)return s;return s.replace(/<[^>]*>/g,"").replace(/javascript:/gi,"").replace(/data:/gi,"").replace(/on\w+\s*=/gi,"").replace(/https?:\/\/\S+/gi,"[link removed]").replace(/www\.\S+/gi,"[link removed]").replace(/\.com\/\S*/gi,"[link removed]").replace(/\.exe|\.zip|\.bat|\.cmd|\.msi|\.scr|\.ps1/gi,"[blocked]").trim()};
@@ -136,6 +155,9 @@ function Skeleton({w="100%",h=16,r=6}){return<div style={{width:w,height:h,borde
 function CardSkeleton(){return<div style={{background:"#fff",borderRadius:10,padding:"20px 22px",border:"1px solid #e2e8f0"}}><Skeleton w="60%" h={10}/><div style={{height:8}}/><Skeleton w="85%" h={16}/><div style={{height:4}}/><Skeleton w="50%" h={12}/><div style={{height:14}}/><Skeleton w="30%" h={14}/></div>}
 
 function ScoreBadge({score}){const c=score>=70?"#059669":score>=40?"#d97706":"#dc2626",bg=score>=70?"#ecfdf5":score>=40?"#fffbeb":"#fef2f2";return<div style={{display:"inline-flex",alignItems:"center",gap:4,background:bg,border:`1px solid ${c}22`,borderRadius:6,padding:"3px 10px"}}><span style={{fontSize:15,fontWeight:700,color:c,fontFamily:FF}}>{score}</span><span style={{fontSize:9,color:c,fontFamily:FF,fontWeight:700,textTransform:"uppercase",letterSpacing:0.5}}>score</span></div>}
+
+function PerkLikelihoodSummary({perks}){const rows=useMemo(()=>{const now=Date.now();const byCat={};CATS.forEach(c=>{byCat[c.key]={...c,yes:0,no:0,yesW:0,noW:0,samples:0,last:0}});(perks||[]).forEach(p=>{const cat=byCat[p.category];if(!cat)return;const when=ts(p.stay_date||p.created_at)||0;const ageDays=when?Math.max(0,(now-when)/86400000):730;const recency=ageDays<=180?1.2:ageDays<=365?1:ageDays<=730?0.85:0.7;const voteDelta=(p.upvotes||0)-(p.downvotes||0);const voteBoost=1+Math.max(-0.2,Math.min(0.35,voteDelta*0.03));const w=Math.max(0.3,recency*voteBoost);const outcome=perkOutcome(p);cat.samples+=1;cat.last=Math.max(cat.last,when);if(outcome==="not_received"){cat.no+=1;cat.noW+=w}else{cat.yes+=1;cat.yesW+=w}});return CATS.map(c=>{const x=byCat[c.key];const totalW=x.yesW+x.noW;const score=totalW?Math.round((x.yesW/totalW)*100):null;const confidence=x.samples>=8?"High confidence":x.samples>=4?"Medium confidence":x.samples>0?"Low confidence":"No data";return{...x,score,confidence}})},[perks]);
+return<div style={{background:"#fff",borderRadius:10,padding:20,border:"1px solid #e2e8f0",marginBottom:20}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}><h3 style={{fontSize:16,fontWeight:700,color:"#0f172a",fontFamily:FF,margin:0}}>Perk Likelihood Snapshot</h3><span style={{fontSize:10,color:"#64748b",fontFamily:FF,textTransform:"uppercase",letterSpacing:1}}>0–100 likelihood from UGC</span></div><p style={{fontSize:12,color:"#64748b",fontFamily:FF,margin:"0 0 14px"}}>Quick glance based on community reports. Gray means there is not enough data yet.</p><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:8}}>{rows.map(r=>{const hasData=r.score!==null;const color=hasData?likelihoodColor(r.score):"#94a3b8";const bg=hasData?likelihoodBg(r.score):"#f8fafc";return<div key={r.key} style={{background:bg,border:"1px solid #e2e8f0",borderRadius:8,padding:"9px 10px"}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,marginBottom:6}}><span style={{fontSize:11,fontWeight:700,color:"#0f172a",fontFamily:FF,display:"inline-flex",alignItems:"center",gap:5}}><span>{r.icon}</span>{r.label}</span><span style={{fontSize:11,fontWeight:700,color:color,fontFamily:FF}}>{hasData?`${r.score}`:"—"}</span></div><div style={{height:7,borderRadius:999,background:"#e2e8f0",overflow:"hidden",marginBottom:6}}><div style={{height:"100%",width:hasData?`${r.score}%`:"0%",background:hasData?`linear-gradient(90deg,${color}66,${color})`:"#cbd5e1",transition:"width 0.3s ease"}}/></div><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}><span style={{fontSize:10,color:"#64748b",fontFamily:FF}}>{hasData?likelihoodLabel(r.score):"No reports yet"}</span><span style={{fontSize:9,color:"#94a3b8",fontFamily:FF}}>{hasData?`Yes ${r.yes} · No ${r.no}`:""}</span></div><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginTop:4}}><span style={{fontSize:9,color:"#94a3b8",fontFamily:FF}}>{r.confidence}</span><span style={{fontSize:9,color:"#94a3b8",fontFamily:FF}}>{r.last?`Updated ${ta(r.last)}`:""}</span></div></div>})}</div></div>}
 
 /* Gated email display — styled for dark background */
 function GatedEmail({hotel,user,onNeedAuth}){
@@ -249,6 +271,7 @@ return<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>{tags.map(
 function PerkCard({perk,user,onVote,onEdit,onDelete,onFlag,showHotel}){const cat=gc(perk.category),stay=fsd(perk.stay_date||perk.latest_stay);
 const isOwner=user&&perk.user_id===user.id;const hasPromo=perk.promo_code||perk.booking_type==="Employee (MMF, MMP, etc.)"||perk.booking_type==="Employee (MMP)"||perk.booking_type==="Corporate"||perk.booking_type==="3rd Party (e.g. Priceline)";
 const score=(perk.upvotes||0)-(perk.downvotes||0);const myVote=perk.my_vote||0;const[flagging,setFlagging]=useState(false);
+const outcome=perkOutcome(perk);
 const submitted=perk.created_at?new Date(perk.created_at).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"}):"";
 return<div style={{display:"flex",gap:14,padding:"16px 0",borderBottom:"1px solid #f1f5f9"}}>
 <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:36,paddingTop:2}}>
@@ -271,6 +294,7 @@ return<div style={{display:"flex",gap:14,padding:"16px 0",borderBottom:"1px soli
 {/* Row 3: Tags */}
 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,flexWrap:"wrap"}}>
 <span style={{...TAG("#f1f5f9",gt(perk.elite_tier).color)}}>{gt(perk.elite_tier).label}</span>
+<span style={{...TAG(outcome==="not_received"?"#fef2f2":"#ecfdf5",outcome==="not_received"?"#b91c1c":"#15803d")}}>{outcome==="not_received"?"Not received":"Received"}</span>
 {perk.upgrade_type&&<span style={{...TAG("#eff6ff","#1d4ed8")}}>{perk.upgrade_type}</span>}
 {perk.booking_type&&<span style={{...TAG("#f0fdf4","#15803d")}}>{perk.booking_type}</span>}
 {hasPromo&&<span style={{...TAG("#fefce8","#a16207"),cursor:"help"}} title="Booked with a promo/corporate/employee code — perks received may differ from standard elite bookings">⚠️ {perk.promo_code||"Promo/Corp rate"}</span>}
@@ -295,7 +319,7 @@ return<div style={{padding:"16px 20px",borderRadius:8,background:highlight?"#f0f
 <span style={{width:6,height:6,borderRadius:"50%",background:t.color}}/><span style={{fontSize:13,fontWeight:700,color:t.color,fontFamily:FF}}>{t.label}</span>{highlight&&<span style={{fontSize:9,background:t.color,color:"#fff",padding:"2px 6px",borderRadius:3,fontFamily:FF,fontWeight:700}}>YOUR TIER</span>}<span style={{fontSize:10,color:"#94a3b8",fontFamily:FF,marginLeft:"auto"}}>{perks.length} perk{perks.length!==1?"s":""}</span></div>
 {open&&perks.map((p,i)=><PerkCard key={p.id||i} perk={p} user={user} onVote={onVote} onEdit={onEdit} onDelete={onDelete}/>)}</div>}
 
-function Footer(){return<footer style={{background:"#0f172a",borderTop:"1px solid #1e293b",padding:"40px 28px",marginTop:40}}><div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:24}}>
+function Footer({onAddHotel}){return<footer style={{background:"#0f172a",borderTop:"1px solid #1e293b",padding:"40px 28px",marginTop:40}}><div style={{maxWidth:1100,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:24}}>
 <div><div style={{display:"flex",alignItems:"baseline",gap:1,marginBottom:8}}><span style={{fontSize:20,fontWeight:700,color:"#fff",fontFamily:FD}}>Perk</span><span style={{fontSize:20,fontWeight:700,color:"#94a3b8",fontFamily:FD}}>Snob</span></div>
 <p style={{fontSize:12,color:"#64748b",fontFamily:FF,maxWidth:280,lineHeight:1.6}}>Real Marriott Bonvoy elite benefits reported by real guests. Powered by the community!</p></div>
 <div style={{display:"flex",gap:32}}>
@@ -303,7 +327,9 @@ function Footer(){return<footer style={{background:"#0f172a",borderTop:"1px soli
 {[{l:"Home",p:"/"},{l:"Search Perks",p:"/search"},{l:"Compare",p:"/compare"},{l:"Following",p:"/following"},{l:"Leaderboard",p:"/leaderboard"}].map(x=><a key={x.p} href={x.p} onClick={e=>{e.preventDefault();window.history.pushState({},"",x.p);window.dispatchEvent(new PopStateEvent("popstate"))}} style={{display:"block",fontSize:13,color:"#64748b",fontFamily:FF,textDecoration:"none",marginBottom:6,transition:"color 0.15s"}} onMouseEnter={e=>e.target.style.color="#fff"} onMouseLeave={e=>e.target.style.color="#64748b"}>{x.l}</a>)}</div>
 <div><div style={{fontSize:10,fontWeight:700,color:"#94a3b8",fontFamily:FF,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Community</div>
 <a href="https://www.reddit.com/r/marriott/" target="_blank" rel="noopener noreferrer" style={{display:"block",fontSize:13,color:"#64748b",fontFamily:FF,textDecoration:"none",marginBottom:6}}>r/marriott</a>
-<a href="https://www.reddit.com/user/MarriottGuy/" target="_blank" rel="noopener noreferrer" style={{display:"block",fontSize:13,color:"#64748b",fontFamily:FF,textDecoration:"none",marginBottom:6}}>Contact (Reddit)</a></div>
+<a href="https://www.reddit.com/user/MarriottGuy/" target="_blank" rel="noopener noreferrer" style={{display:"block",fontSize:13,color:"#64748b",fontFamily:FF,textDecoration:"none",marginBottom:10}}>Contact (Reddit)</a>
+{onAddHotel&&<button onClick={()=>onAddHotel()} style={{background:"#fff",color:"#0f172a",border:"1px solid #e2e8f0",borderRadius:6,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:FF}}>+ Add Hotel</button>}
+</div>
 </div></div>
 <div style={{maxWidth:1100,margin:"20px auto 0",paddingTop:20,borderTop:"1px solid #1e293b"}}><p style={{fontSize:11,color:"#475569",fontFamily:FF}}>PerkSnob is not affiliated with Marriott International. All trademarks belong to their respective owners.</p></div></footer>}
 
@@ -479,7 +505,7 @@ function HotelDetail({hotel,user,onBack,onNeedAuth,allHotels,perkCounts,onSelect
 const[sT,ssT]=useState(""),[sDate,ssDate]=useState(""),[sub,sSub]=useState(false);
 const[sBT,ssBT]=useState(""),[sPC,ssPC]=useState("");
 const[isFollowing,setIsFollowing]=useState(false),[followBusy,setFollowBusy]=useState(false);
-const emptyEntry=()=>({category:"",description:"",upgrade_type:"",category_details:{}});
+const emptyEntry=()=>({category:"",description:"",upgrade_type:"",category_details:{},report_outcome:"received"});
 const[entries,setEntries]=useState([emptyEntry()]);
 const updateEntry=(i,field,val)=>{const ne=[...entries];ne[i]={...ne[i],[field]:val};setEntries(ne)};
 const addEntry=()=>setEntries([...entries,emptyEntry()]);
@@ -504,13 +530,13 @@ for(const e of valid){if(e.description.trim().length>MAX_DESC){showToast(`Descri
 const now=Date.now();if(!editId&&now-lastSub.current<10000){showToast("Please wait a few seconds between submissions","error");return}
 sSub(true);
 if(editId){const e=valid[0];const row={hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:sT,category:e.category,description:sanitize(e.description)};if(sDate)row.stay_date=sDate+"-01";if(sBT)row.booking_type=sBT;if(sPC.trim())row.promo_code=sanitize(sPC);if(e.category==="upgrade"&&e.upgrade_type)row.upgrade_type=e.upgrade_type;
-const cd=Object.fromEntries(Object.entries(e.category_details||{}).filter(([_,v])=>v!==undefined&&v!==""&&v!==0));if(Object.keys(cd).length)row.category_details=cd;
+const cd=Object.fromEntries(Object.entries(e.category_details||{}).filter(([_,v])=>v!==undefined&&v!==""&&v!==0));cd.report_outcome=e.report_outcome==="not_received"?"not_received":"received";if(Object.keys(cd).length)row.category_details=cd;
 const{error}=await supabase.from("perk_reports").update(row).eq("id",editId);if(error){showToast("Error: "+error.message,"error");sSub(false);return}showToast("Perk updated!")}
 else{const rows=valid.map(e=>{const row={hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:sT,category:e.category,description:sanitize(e.description)};if(sDate)row.stay_date=sDate+"-01";if(sBT)row.booking_type=sBT;if(sPC.trim())row.promo_code=sanitize(sPC);if(e.category==="upgrade"&&e.upgrade_type)row.upgrade_type=e.upgrade_type;
-const cd=Object.fromEntries(Object.entries(e.category_details||{}).filter(([_,v])=>v!==undefined&&v!==""&&v!==0));if(Object.keys(cd).length)row.category_details=cd;return row});
+const cd=Object.fromEntries(Object.entries(e.category_details||{}).filter(([_,v])=>v!==undefined&&v!==""&&v!==0));cd.report_outcome=e.report_outcome==="not_received"?"not_received":"received";if(Object.keys(cd).length)row.category_details=cd;return row});
 const{error}=await supabase.from("perk_reports").insert(rows);if(error){showToast("Error: "+error.message,"error");sSub(false);return}lastSub.current=now;showToast(`${rows.length} perk${rows.length>1?"s":""} submitted! Thanks for contributing.`)}
 resetForm();sSub(false);load()};
-const startEdit=p=>{setEditId(p.id);ssT(p.elite_tier);setEntries([{category:p.category,description:p.description,upgrade_type:p.upgrade_type||"",category_details:p.category_details||{}}]);ssDate(p.stay_date?p.stay_date.slice(0,7):"");ssBT(p.booking_type||"");ssPC(p.promo_code||"");ssf(true);window.scrollTo({top:0,behavior:"smooth"})};
+const startEdit=p=>{setEditId(p.id);ssT(p.elite_tier);setEntries([{category:p.category,description:p.description,upgrade_type:p.upgrade_type||"",category_details:p.category_details||{},report_outcome:perkOutcome(p)}]);ssDate(p.stay_date?p.stay_date.slice(0,7):"");ssBT(p.booking_type||"");ssPC(p.promo_code||"");ssf(true);window.scrollTo({top:0,behavior:"smooth"})};
 const deletePerk=async p=>{const{error}=await supabase.from("perk_reports").delete().eq("id",p.id);if(error){showToast("Error deleting: "+error.message,"error");return}showToast("Perk deleted.");load()};
 const subCmt=async()=>{if(!user){onNeedAuth();return}if(!cT||!cX.trim())return;if(cX.trim().length>MAX_TIP){showToast(`Tip must be ${MAX_TIP} characters or less`,"error");return}if(hasProfanity(cX)){showToast("Your tip contains inappropriate language. Please revise.","error");return}const{error}=await supabase.from("comments").insert({hotel_id:hotel.id,user_id:user.id,display_name:dname(user),elite_tier:cT,text:sanitize(cX)});if(error){showToast("Error: "+error.message,"error");return}scT("");scX("");showToast("Tip posted!");load()};
 const lastVote=useRef(0);
@@ -535,6 +561,7 @@ return<div><button onClick={onBack} style={{background:"#fff",border:"1px solid 
 <div style={{display:"flex",gap:8,marginBottom:16,alignItems:"center",flexWrap:"wrap"}}>
 <span style={{fontSize:15,fontWeight:700,color:"#0f172a",fontFamily:FF}}>Perks Overview</span>
 <span style={{fontSize:11,color:"#64748b",fontFamily:FF}}>Sorted by stay date (most recent first)</span></div>
+<PerkLikelihoodSummary perks={perks}/>
 <div style={{background:"#f8fafc",borderRadius:10,padding:28,border:"1px solid #e2e8f0",marginBottom:24}}>
 {sf&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}><h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,margin:0}}>{editId?"Edit Perk":"Report Your Stay"}</h3><button onClick={()=>{resetForm()}} style={{background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:20,fontFamily:FF,padding:"0 4px",lineHeight:1}}>×</button></div>}
 {!sf&&<h3 style={{fontSize:18,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:16}}>Report Your Stay</h3>}
@@ -550,9 +577,10 @@ return<div><button onClick={onBack} style={{background:"#fff",border:"1px solid 
 {entries.length>1&&<button onClick={()=>removeEntry(i)} style={{background:"none",border:"none",color:"#dc2626",cursor:"pointer",fontSize:18,fontFamily:FF,padding:0,lineHeight:1}} aria-label="Remove this perk">×</button>}</div>
 <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:12}}>
 <div style={{flex:"1 1 180px"}}><label style={LS}>Category</label><select value={entry.category} onChange={e=>{const ne=[...entries];ne[i]={...ne[i],category:e.target.value,category_details:{}};setEntries(ne)}} style={IS}><option value="">Select...</option>{CATS.map(c=><option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}</select></div></div>
+{entry.category&&<div style={{marginBottom:12}}><label style={LS}>Did you receive this perk?</label><div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button type="button" onClick={()=>updateEntry(i,"report_outcome","received")} style={{background:entry.report_outcome!=="not_received"?"#dcfce7":"#fff",color:entry.report_outcome!=="not_received"?"#166534":"#475569",border:entry.report_outcome!=="not_received"?"1px solid #86efac":"1px solid #e2e8f0",borderRadius:6,padding:"7px 11px",fontSize:11,fontWeight:700,fontFamily:FF,cursor:"pointer"}}>Yes, received</button><button type="button" onClick={()=>updateEntry(i,"report_outcome","not_received")} style={{background:entry.report_outcome==="not_received"?"#fee2e2":"#fff",color:entry.report_outcome==="not_received"?"#b91c1c":"#475569",border:entry.report_outcome==="not_received"?"1px solid #fecaca":"1px solid #e2e8f0",borderRadius:6,padding:"7px 11px",fontSize:11,fontWeight:700,fontFamily:FF,cursor:"pointer"}}>No, did not receive</button></div></div>}
 {entry.category==="upgrade"&&<div style={{marginBottom:12}}><label style={LS}>Upgrade Type</label><select value={entry.upgrade_type||""} onChange={e=>updateEntry(i,"upgrade_type",e.target.value)} style={IS}><option value="">Select type...</option>{UPGRADE_TYPES.map(u=><option key={u} value={u}>{u}</option>)}</select></div>}
 {entry.category&&<CategoryDetailFields category={entry.category} details={entry.category_details||{}} onChange={cd=>updateEntry(i,"category_details",cd)}/>}
-<div><label style={LS}>Describe the perk <CharCount val={entry.description} max={MAX_DESC}/></label><textarea value={entry.description} onChange={e=>updateEntry(i,"description",e.target.value.slice(0,MAX_DESC))} placeholder="e.g., Full hot buffet at the main restaurant, free for all Platinum+" style={{...IS,minHeight:70,resize:"vertical"}} maxLength={MAX_DESC}/></div>
+<div><label style={LS}>{entry.report_outcome==="not_received"?"What happened instead?":"Describe the perk"} <CharCount val={entry.description} max={MAX_DESC}/></label><textarea value={entry.description} onChange={e=>updateEntry(i,"description",e.target.value.slice(0,MAX_DESC))} placeholder={entry.report_outcome==="not_received"?"e.g., Requested late checkout and was denied at check-in":"e.g., Full hot buffet at the main restaurant, free for all Platinum+"} style={{...IS,minHeight:70,resize:"vertical"}} maxLength={MAX_DESC}/></div>
 </div>)}
 {!editId&&<button onClick={addEntry} style={{background:"#fff",color:"#0f172a",border:"2px dashed #e2e8f0",borderRadius:8,padding:"12px 20px",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:FF,width:"100%",marginBottom:16,transition:"all 0.15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor="#0f172a"} onMouseLeave={e=>e.currentTarget.style.borderColor="#e2e8f0"}>+ Add another category</button>}
 <div style={{display:"flex",gap:8}}><button onClick={subPerk} disabled={sub} style={{...BT(),opacity:sub?0.5:1}}>{editId?"Save Changes":`Submit ${entries.filter(e=>e.category&&e.description.trim()).length||""} Perk${entries.filter(e=>e.category&&e.description.trim()).length!==1?"s":""}`}</button><button onClick={resetForm} style={BT("#e2e8f0","#64748b")}>{editId?"Cancel Edit":"Cancel"}</button></div></>}
@@ -610,10 +638,11 @@ if(!cleanCity&&!cleanCountry&&!cleanCode&&!cleanUrl){showToast("Add city/country
 if(cleanUrl&&!/^https?:\/\/\S+$/i.test(cleanUrl)){showToast("Enter a valid Marriott URL (https://...)","error");return}
 setSubmitting(true);
 const row={user_id:user.id,hotel_name:cleanName};if(cleanBrand)row.brand=cleanBrand;if(cleanCity)row.city=cleanCity;if(cleanState)row.state=cleanState;if(cleanCountry)row.country=cleanCountry;if(cleanCode)row.marriott_code=cleanCode;if(cleanUrl)row.marriott_url=cleanUrl;if(cleanNotes)row.notes=cleanNotes;
-const{error}=await supabase.from("hotel_requests").insert(row);
+const{data,error}=await supabase.from("hotel_requests").insert(row).select("id").single();
 setSubmitting(false);
 if(error?.code==="23505"){showToast("You already requested this hotel.","error");return}
 if(error){showToast("Error submitting request: "+error.message,"error");return}
+if(data?.id){supabase.functions.invoke("hotel-request-alert",{body:{requestId:data.id}}).then(({error:alertErr})=>{if(alertErr)console.error("Hotel request alert email failed:",alertErr)}).catch(e=>console.error("Hotel request alert email failed:",e))}
 showToast("Hotel request submitted. We'll review and add it soon.");onClose()};
 return<div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.7)",zIndex:1001,display:"flex",alignItems:"center",justifyContent:"center",padding:20,backdropFilter:"blur(8px)"}} onClick={onClose}><div style={{background:"#fff",borderRadius:12,padding:28,maxWidth:560,width:"100%",boxShadow:"0 25px 60px rgba(0,0,0,0.15)",maxHeight:"85vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()} role="dialog" aria-label="Request missing hotel">
 <h2 style={{fontSize:24,fontFamily:FD,fontWeight:700,marginBottom:4,color:"#0f172a"}}>Request a Missing Hotel</h2>
@@ -692,19 +721,20 @@ const setFollowState=(hotelId,next)=>setFollowedHotelIds(prev=>{const n=new Set(
 const isFollowedHotel=useCallback(hotelId=>followedHotelIds.has(hotelId),[followedHotelIds]);
 const isFollowBusy=useCallback(hotelId=>followBusyIds.has(hotelId),[followBusyIds]);
 const toggleHotelFollow=async(hotelId,current)=>{if(!user){ssa(true);return}if(isFollowBusy(hotelId))return;setFollowBusyIds(prev=>{const n=new Set(prev);n.add(hotelId);return n});try{if(current){const{error}=await supabase.from("hotel_follows").delete().eq("hotel_id",hotelId).eq("user_id",user.id);if(error)throw error;setFollowState(hotelId,false);showToast("Unfollowed hotel")}else{const{error}=await supabase.from("hotel_follows").insert({hotel_id:hotelId,user_id:user.id});if(error&&error.code!=="23505")throw error;setFollowState(hotelId,true);showToast("Following hotel for updates")}}catch(e){showToast("Could not update follow status","error");console.error(e)}setFollowBusyIds(prev=>{const n=new Set(prev);n.delete(hotelId);return n})};
+const isReceivedSignal=p=>perkOutcome({category:p?.category,category_details:p?.details||p?.category_details})!=="not_received";
 const PERK_FILTERS=[
-{key:"free_breakfast",label:"🍳 Free Breakfast",icon:"🍳",test:perks=>perks?.some(p=>p.category==="breakfast"&&(p.details?.cost==="Complimentary"||!p.details?.cost))},
-{key:"lounge_open",label:"🍸 Lounge Open",icon:"🍸",test:perks=>perks?.some(p=>p.category==="lounge"&&p.details?.status!=="Closed"&&p.details?.status!=="No lounge")},
-{key:"suite_upgrade",label:"⬆️ Suite Upgrades",icon:"⬆️",test:perks=>perks?.some(p=>p.category==="upgrade")},
-{key:"late_checkout",label:"🕐 Late Checkout",icon:"🕐",test:perks=>perks?.some(p=>p.category==="late_checkout"&&p.details?.time_granted!=="No late checkout")},
-{key:"free_parking",label:"🅿️ Free Parking",icon:"🅿️",test:perks=>perks?.some(p=>p.category==="parking"&&p.details?.included==="Yes, free")},
-{key:"solid_bathroom",label:"🚿 Solid Doors",icon:"🚿",test:perks=>perks?.some(p=>p.category==="bathroom"&&(p.details?.door_type==="Solid wood/standard"||p.details?.door_type==="Pocket door"))},
-{key:"spa_perks",label:"💆 Spa Benefits",icon:"💆",test:perks=>perks?.some(p=>p.category==="spa"&&p.details?.spa_type!=="Nothing")},
-{key:"fnb_credit",label:"💳 F&B Credit",icon:"💳",test:perks=>perks?.some(p=>p.category==="fnb_credit")},
-{key:"welcome_gift",label:"🎁 Welcome Gift",icon:"🎁",test:perks=>perks?.some(p=>p.category==="gift"&&p.details?.gift_type!=="Nothing")},
-{key:"good_wifi",label:"📶 Good WiFi",icon:"📶",test:perks=>perks?.some(p=>p.category==="wifi"&&(p.details?.speed==="Excellent (50+ Mbps)"||p.details?.speed==="Good (20–50 Mbps)"))},
-{key:"pool_open",label:"🏊 Pool Open",icon:"🏊",test:perks=>perks?.some(p=>p.category==="pool"&&p.details?.pool_open==="Yes")},
-{key:"great_staff",label:"🤝 Great Staff",icon:"🤝",test:perks=>perks?.some(p=>p.category==="staff_service"&&p.details?.honors_status?.startsWith("Yes"))},
+{key:"free_breakfast",label:"🍳 Free Breakfast",icon:"🍳",test:perks=>perks?.some(p=>isReceivedSignal(p)&&p.category==="breakfast"&&(p.details?.cost==="Complimentary"||!p.details?.cost))},
+{key:"lounge_open",label:"🍸 Lounge Open",icon:"🍸",test:perks=>perks?.some(p=>isReceivedSignal(p)&&p.category==="lounge"&&p.details?.status!=="Closed"&&p.details?.status!=="No lounge")},
+{key:"suite_upgrade",label:"⬆️ Suite Upgrades",icon:"⬆️",test:perks=>perks?.some(p=>isReceivedSignal(p)&&p.category==="upgrade")},
+{key:"late_checkout",label:"🕐 Late Checkout",icon:"🕐",test:perks=>perks?.some(p=>isReceivedSignal(p)&&p.category==="late_checkout"&&p.details?.time_granted!=="No late checkout")},
+{key:"free_parking",label:"🅿️ Free Parking",icon:"🅿️",test:perks=>perks?.some(p=>isReceivedSignal(p)&&p.category==="parking"&&p.details?.included==="Yes, free")},
+{key:"solid_bathroom",label:"🚿 Solid Doors",icon:"🚿",test:perks=>perks?.some(p=>isReceivedSignal(p)&&p.category==="bathroom"&&(p.details?.door_type==="Solid wood/standard"||p.details?.door_type==="Pocket door"))},
+{key:"spa_perks",label:"💆 Spa Benefits",icon:"💆",test:perks=>perks?.some(p=>isReceivedSignal(p)&&p.category==="spa"&&p.details?.spa_type!=="Nothing")},
+{key:"fnb_credit",label:"💳 F&B Credit",icon:"💳",test:perks=>perks?.some(p=>isReceivedSignal(p)&&p.category==="fnb_credit")},
+{key:"welcome_gift",label:"🎁 Welcome Gift",icon:"🎁",test:perks=>perks?.some(p=>isReceivedSignal(p)&&p.category==="gift"&&p.details?.gift_type!=="Nothing")},
+{key:"good_wifi",label:"📶 Good WiFi",icon:"📶",test:perks=>perks?.some(p=>isReceivedSignal(p)&&p.category==="wifi"&&(p.details?.speed==="Excellent (50+ Mbps)"||p.details?.speed==="Good (20–50 Mbps)"))},
+{key:"pool_open",label:"🏊 Pool Open",icon:"🏊",test:perks=>perks?.some(p=>isReceivedSignal(p)&&p.category==="pool"&&p.details?.pool_open==="Yes")},
+{key:"great_staff",label:"🤝 Great Staff",icon:"🤝",test:perks=>perks?.some(p=>isReceivedSignal(p)&&p.category==="staff_service"&&p.details?.honors_status?.startsWith("Yes"))},
 ];
 const filt=hotels.filter(h=>{const words=search.toLowerCase().split(/\s+/).filter(w=>w.length>0);const hay=[h.name,h.location,h.region||"",h.brand,h.country||""].join(" ").toLowerCase();const ms=!search||words.every(w=>hay.includes(w));const mb=!bf||h.brand===bf;const mr=!regionFilter||h.region===regionFilter;const mp=!perkFilter.length||perkFilter.every(pk=>PERK_FILTERS.find(f=>f.key===pk)?.test(hotelPerks[h.id]));return ms&&mb&&mr&&mp});
 const sortedFilt=[...filt].sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)||(pc[b.id]||0)-(pc[a.id]||0)||a.name.localeCompare(b.name));
@@ -725,19 +755,19 @@ const ambHotels=withReports.filter(h=>(hotelPerks[h.id]||[]).some(p=>true)).filt
 if(ambHotels.length>=3)rows.push({title:"Best for Ambassador & Titanium Elite",subtitle:"Luxury brands with the most reported perks",hotels:ambHotels});
 
 /* Free Breakfast Confirmed */
-const bfHotels=withReports.filter(h=>(hotelPerks[h.id]||[]).some(p=>p.category==="breakfast"&&(!p.details?.cost||p.details?.cost==="Complimentary"))).sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)).slice(0,20);
+const bfHotels=withReports.filter(h=>(hotelPerks[h.id]||[]).some(p=>isReceivedSignal(p)&&p.category==="breakfast"&&(!p.details?.cost||p.details?.cost==="Complimentary"))).sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)).slice(0,20);
 if(bfHotels.length>=3)rows.push({title:"Free Breakfast Confirmed",subtitle:"Hotels where complimentary breakfast has been reported",hotels:bfHotels});
 
 /* Lounge Access */
-const loungeHotels=withReports.filter(h=>(hotelPerks[h.id]||[]).some(p=>p.category==="lounge"&&p.details?.status!=="Closed"&&p.details?.status!=="No lounge")).sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)).slice(0,20);
+const loungeHotels=withReports.filter(h=>(hotelPerks[h.id]||[]).some(p=>isReceivedSignal(p)&&p.category==="lounge"&&p.details?.status!=="Closed"&&p.details?.status!=="No lounge")).sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)).slice(0,20);
 if(loungeHotels.length>=3)rows.push({title:"Lounge Access Available",subtitle:"Properties with confirmed executive lounge access",hotels:loungeHotels});
 
 /* Suite Upgrade Friendly */
-const upgradeHotels=withReports.filter(h=>(hotelPerks[h.id]||[]).some(p=>p.category==="upgrade")).sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)).slice(0,20);
+const upgradeHotels=withReports.filter(h=>(hotelPerks[h.id]||[]).some(p=>isReceivedSignal(p)&&p.category==="upgrade")).sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)).slice(0,20);
 if(upgradeHotels.length>=3)rows.push({title:"Suite Upgrade Friendly",subtitle:"Hotels where room upgrades have been reported",hotels:upgradeHotels});
 
 /* Late Checkout Champions */
-const lateHotels=withReports.filter(h=>(hotelPerks[h.id]||[]).some(p=>p.category==="late_checkout"&&p.details?.time_granted!=="No late checkout")).sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)).slice(0,20);
+const lateHotels=withReports.filter(h=>(hotelPerks[h.id]||[]).some(p=>isReceivedSignal(p)&&p.category==="late_checkout"&&p.details?.time_granted!=="No late checkout")).sort((a,b)=>(scores[b.id]||0)-(scores[a.id]||0)).slice(0,20);
 if(lateHotels.length>=3)rows.push({title:"Late Checkout Champions",subtitle:"Properties that honor late checkout requests",hotels:lateHotels});
 
 /* Most Reported */
@@ -827,4 +857,4 @@ return<><div style={{marginBottom:14,marginTop:42}}><span style={{fontSize:12,co
 {isSearching&&<Pagination current={pgNum} total={Math.ceil(sortedFilt.length/PAGE_SIZE)} onChange={p=>{setPgNum(p);window.scrollTo({top:0,behavior:"smooth"})}}/>}
 {!sortedFilt.length&&<div style={{textAlign:"center",padding:"60px 20px"}}><h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:6}}>No hotels found</h3><p style={{fontSize:13,color:"#94a3b8",marginBottom:20}}>Try a different search or filter.</p><button onClick={()=>{ss("");sbf("");setPF([]);setRF("")}} style={BT()}>Clear Filters</button></div>}</>}
 })()}</>}</div>
-<Footer/></div>}
+<Footer onAddHotel={()=>openHotelRequest("")}/></div>}
