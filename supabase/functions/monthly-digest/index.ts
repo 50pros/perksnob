@@ -5,11 +5,6 @@ type DigestStatus = "sent" | "skipped" | "failed";
 type PrefRow = {
   user_id: string;
   monthly_digest_enabled: boolean;
-  digest_send_day: number;
-};
-
-type FollowRow = {
-  hotel_id: string;
 };
 
 type HotelRow = {
@@ -32,11 +27,30 @@ type PerkRow = {
   stay_date: string | null;
 };
 
+type UpvoteRow = {
+  perk_report_id: string;
+};
+
+type DigestItem = {
+  hotel_id: string;
+  category: string;
+  description: string;
+  elite_tier: string | null;
+  report_count: number;
+  upvote_count: number;
+  total_confirmations: number;
+  latest_stay_date: string | null;
+  latest_reported_at: string;
+};
+
 type DigestRequest = {
   dryRun?: boolean;
   forceDay?: number;
+  forceRun?: boolean;
   forceResend?: boolean;
   userIds?: string[];
+  topCount?: number;
+  windowDays?: number;
 };
 
 const json = (status: number, body: unknown) =>
@@ -64,6 +78,37 @@ function formatDate(dateIso: string) {
   }
 }
 
+function toTimestamp(value?: string | null) {
+  if (!value) return 0;
+  const t = Date.parse(value);
+  return Number.isNaN(t) ? 0 : t;
+}
+
+function isLastDayOfMonthUtc(date: Date) {
+  const tomorrow = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1)
+  );
+  return tomorrow.getUTCDate() === 1;
+}
+
+function formatCategory(category: string) {
+  return category
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatTier(tier: string | null) {
+  if (!tier) return "All Tiers";
+  const map: Record<string, string> = {
+    ambassador: "Ambassador",
+    titanium: "Titanium",
+    platinum: "Platinum",
+    gold: "Gold",
+    silver: "Silver",
+  };
+  return map[tier] || tier;
+}
+
 async function listAuthUsers(
   supabase: ReturnType<typeof createClient>,
   targetUserIds: Set<string>
@@ -84,6 +129,134 @@ async function listAuthUsers(
   }
 
   return emailByUserId;
+}
+
+async function listRecentPerkReports(
+  supabase: ReturnType<typeof createClient>,
+  sinceIso: string
+) {
+  const allRows: PerkRow[] = [];
+  const pageSize = 1000;
+  let from = 0;
+
+  while (true) {
+    const { data, error } = (await supabase
+      .from("perk_reports")
+      .select("id,user_id,hotel_id,category,description,created_at,display_name,elite_tier,stay_date")
+      .gte("created_at", sinceIso)
+      .order("stay_date", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .range(from, from + pageSize - 1)) as { data: PerkRow[] | null; error: Error | null };
+
+    if (error) throw error;
+    const batch = data || [];
+    allRows.push(...batch);
+
+    if (batch.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return allRows;
+}
+
+async function listUpvoteCounts(
+  supabase: ReturnType<typeof createClient>,
+  reportIds: string[]
+) {
+  const counts = new Map<string, number>();
+  if (!reportIds.length) return counts;
+
+  const chunkSize = 500;
+  for (let i = 0; i < reportIds.length; i += chunkSize) {
+    const chunk = reportIds.slice(i, i + chunkSize);
+    const { data, error } = (await supabase
+      .from("upvotes")
+      .select("perk_report_id")
+      .in("perk_report_id", chunk)) as { data: UpvoteRow[] | null; error: Error | null };
+
+    if (error) throw error;
+
+    for (const row of data || []) {
+      counts.set(row.perk_report_id, (counts.get(row.perk_report_id) || 0) + 1);
+    }
+  }
+
+  return counts;
+}
+
+function rankTopPerkItems(
+  reports: PerkRow[],
+  upvoteCounts: Map<string, number>,
+  maxItems: number
+) {
+  const grouped = new Map<string, DigestItem>();
+
+  for (const row of reports) {
+    const description = (row.description || "").trim();
+    if (!description) continue;
+
+    const key = `${row.hotel_id}|${row.category}|${row.elite_tier || ""}|${description.toLowerCase()}`;
+    const rowUpvotes = upvoteCounts.get(row.id) || 0;
+    const existing = grouped.get(key);
+
+    if (!existing) {
+      grouped.set(key, {
+        hotel_id: row.hotel_id,
+        category: row.category,
+        description,
+        elite_tier: row.elite_tier || null,
+        report_count: 1,
+        upvote_count: rowUpvotes,
+        total_confirmations: 1 + rowUpvotes,
+        latest_stay_date: row.stay_date || null,
+        latest_reported_at: row.created_at,
+      });
+      continue;
+    }
+
+    existing.report_count += 1;
+    existing.upvote_count += rowUpvotes;
+    existing.total_confirmations = existing.report_count + existing.upvote_count;
+
+    if (toTimestamp(row.stay_date) > toTimestamp(existing.latest_stay_date)) {
+      existing.latest_stay_date = row.stay_date || existing.latest_stay_date;
+    }
+    if (toTimestamp(row.created_at) > toTimestamp(existing.latest_reported_at)) {
+      existing.latest_reported_at = row.created_at;
+    }
+  }
+
+  const ranked = [...grouped.values()].sort(
+    (a, b) =>
+      b.total_confirmations - a.total_confirmations ||
+      b.upvote_count - a.upvote_count ||
+      toTimestamp(b.latest_stay_date) - toTimestamp(a.latest_stay_date) ||
+      toTimestamp(b.latest_reported_at) - toTimestamp(a.latest_reported_at) ||
+      b.report_count - a.report_count
+  );
+
+  // Keep the list varied so one hotel cannot dominate the whole digest.
+  const selected: DigestItem[] = [];
+  const perHotelCap = 2;
+  const perHotelCount = new Map<string, number>();
+
+  for (const item of ranked) {
+    const count = perHotelCount.get(item.hotel_id) || 0;
+    if (count >= perHotelCap) continue;
+    selected.push(item);
+    perHotelCount.set(item.hotel_id, count + 1);
+    if (selected.length >= maxItems) break;
+  }
+
+  if (selected.length < maxItems) {
+    for (const item of ranked) {
+      if (selected.includes(item)) continue;
+      selected.push(item);
+      if (selected.length >= maxItems) break;
+    }
+  }
+
+  return selected;
 }
 
 async function logDigest(
@@ -138,40 +311,89 @@ async function sendWithResend(
 function buildDigestEmailHtml(args: {
   appBaseUrl: string;
   hotelMap: Map<string, HotelRow>;
-  recentPerks: PerkRow[];
-  followedCount: number;
+  items: DigestItem[];
+  windowDays: number;
 }) {
-  const { appBaseUrl, hotelMap, recentPerks, followedCount } = args;
-  const rows = recentPerks.slice(0, 12);
+  const { appBaseUrl, hotelMap, items, windowDays } = args;
 
-  const items = rows
-    .map((row) => {
+  const rows = items
+    .map((row, index) => {
       const hotel = hotelMap.get(row.hotel_id);
-      const name = hotel?.name ?? "Hotel";
-      const slug = hotel?.slug ? `${appBaseUrl}/hotel/${hotel.slug}` : appBaseUrl;
-      const line = row.description ? escapeHtml(row.description.slice(0, 140)) : "New report";
-      const category = escapeHtml(row.category.replaceAll("_", " "));
-      const timing = row.stay_date
-        ? `stayed ${formatDate(row.stay_date)}, reported ${formatDate(row.created_at)}`
-        : `reported ${formatDate(row.created_at)}`;
-      return `<li style="margin:0 0 10px 0;"><a href="${slug}" style="color:#0f172a;text-decoration:none;font-weight:700;">${escapeHtml(
-        name
-      )}</a> <span style="color:#64748b;">(${category}, ${escapeHtml(
-        timing
-      )})</span><br/><span style="color:#475569;">${line}</span></li>`;
+      const hotelName = hotel?.name ?? "Hotel";
+      const hotelUrl = hotel?.slug ? `${appBaseUrl}/hotel/${hotel.slug}` : appBaseUrl;
+      const timing = row.latest_stay_date
+        ? `Latest stay ${formatDate(row.latest_stay_date)} • Reported ${formatDate(row.latest_reported_at)}`
+        : `Reported ${formatDate(row.latest_reported_at)}`;
+      const score = `${row.total_confirmations} signal${row.total_confirmations === 1 ? "" : "s"} (${row.report_count} report${row.report_count === 1 ? "" : "s"} + ${row.upvote_count} agree${row.upvote_count === 1 ? "" : "s"})`;
+
+      return `<li style="margin:0 0 14px 0;">
+        <div style="font-size:12px;color:#64748b;margin-bottom:4px;">#${index + 1} • ${escapeHtml(
+          formatCategory(row.category)
+        )} • ${escapeHtml(formatTier(row.elite_tier))}</div>
+        <a href="${hotelUrl}" style="color:#0f172a;text-decoration:none;font-weight:700;">${escapeHtml(
+          hotelName
+        )}</a>
+        <div style="margin:3px 0 4px 0;color:#334155;font-size:13px;line-height:1.45;">${escapeHtml(
+          row.description.slice(0, 180)
+        )}</div>
+        <div style="color:#64748b;font-size:12px;">${escapeHtml(score)} • ${escapeHtml(timing)}</div>
+      </li>`;
     })
     .join("");
 
   return `
   <div style="font-family:Arial,sans-serif;background:#f8fafc;padding:20px;">
-    <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:24px;">
+    <div style="max-width:680px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:24px;">
       <h2 style="margin:0 0 8px 0;color:#0f172a;">PerkSnob Monthly Digest</h2>
-      <p style="margin:0 0 14px 0;color:#475569;">You are following ${followedCount} hotel${followedCount !== 1 ? "s" : ""}. Here are recent updates from the community:</p>
-      <ul style="padding-left:20px;margin:0 0 16px 0;">${items || "<li style='color:#64748b;'>No recent reports this month.</li>"}</ul>
+      <p style="margin:0 0 14px 0;color:#475569;">Top community-reported perks from the last ${windowDays} days.</p>
+      <ul style="padding-left:20px;margin:0 0 16px 0;">${
+        rows || "<li style='color:#64748b;'>No standout perks were reported in this period.</li>"
+      }</ul>
       <a href="${appBaseUrl}" style="display:inline-block;background:#0f172a;color:#fff;padding:10px 14px;border-radius:6px;text-decoration:none;font-weight:700;">Open PerkSnob</a>
       <p style="margin:14px 0 0 0;color:#94a3b8;font-size:12px;">Manage digest settings from your PerkSnob profile page.</p>
     </div>
   </div>`;
+}
+
+function buildDigestText(args: {
+  appBaseUrl: string;
+  hotelMap: Map<string, HotelRow>;
+  items: DigestItem[];
+  windowDays: number;
+}) {
+  const { appBaseUrl, hotelMap, items, windowDays } = args;
+  const lines = [
+    `PerkSnob Monthly Digest`,
+    `Top community-reported perks from the last ${windowDays} days:`,
+    "",
+  ];
+
+  if (!items.length) {
+    lines.push("No standout perks were reported in this period.");
+  } else {
+    items.forEach((row, index) => {
+      const hotel = hotelMap.get(row.hotel_id);
+      const hotelName = hotel?.name ?? "Hotel";
+      const hotelUrl = hotel?.slug ? `${appBaseUrl}/hotel/${hotel.slug}` : appBaseUrl;
+      const score = `${row.total_confirmations} signals (${row.report_count} reports + ${row.upvote_count} agrees)`;
+      const timing = row.latest_stay_date
+        ? `latest stay ${formatDate(row.latest_stay_date)}, reported ${formatDate(row.latest_reported_at)}`
+        : `reported ${formatDate(row.latest_reported_at)}`;
+
+      lines.push(
+        `${index + 1}. ${hotelName} — ${formatCategory(row.category)} (${formatTier(
+          row.elite_tier
+        )})`,
+        `${row.description}`,
+        `${score}; ${timing}`,
+        `${hotelUrl}`,
+        ""
+      );
+    });
+  }
+
+  lines.push(`Open PerkSnob: ${appBaseUrl}`);
+  return lines.join("\n");
 }
 
 Deno.serve(async (req) => {
@@ -200,18 +422,32 @@ Deno.serve(async (req) => {
     const dryRun = !!body.dryRun;
     const forceResend = !!body.forceResend;
     const forceDay = body.forceDay ? Math.min(28, Math.max(1, body.forceDay)) : null;
+    const forceRun = !!body.forceRun;
     const forcedUserIds = new Set((body.userIds || []).filter(Boolean));
+    const topCount = Math.min(20, Math.max(10, body.topCount || 15));
+    const windowDays = Math.min(90, Math.max(7, body.windowDays || 30));
 
     const appBaseUrl = Deno.env.get("APP_BASE_URL") || "https://perksnob.com";
     const resendApiKey = Deno.env.get("RESEND_API_KEY") || "";
     const digestFrom = Deno.env.get("DIGEST_FROM_EMAIL") || "PerkSnob <digest@perksnob.com>";
 
     const now = new Date();
-    const day = forceDay ?? now.getUTCDate();
+    const simulatedNow =
+      forceDay !== null
+        ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), forceDay))
+        : now;
+    const isLastDay = isLastDayOfMonthUtc(simulatedNow);
+    if (!isLastDay && !forceRun && forcedUserIds.size === 0) {
+      return json(200, {
+        message: "Digest skipped (not last day of month).",
+        todayUtc: now.toISOString().slice(0, 10),
+      });
+    }
+
     const periodMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
       .toISOString()
       .slice(0, 10);
-    const since = new Date(now.getTime() - 35 * 24 * 60 * 60 * 1000).toISOString();
+    const since = new Date(now.getTime() - windowDays * 24 * 60 * 60 * 1000).toISOString();
 
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -219,13 +455,11 @@ Deno.serve(async (req) => {
 
     let prefQuery = supabase
       .from("user_notification_prefs")
-      .select("user_id,monthly_digest_enabled,digest_send_day")
+      .select("user_id,monthly_digest_enabled")
       .eq("monthly_digest_enabled", true);
 
     if (forcedUserIds.size > 0) {
       prefQuery = prefQuery.in("user_id", [...forcedUserIds]);
-    } else {
-      prefQuery = prefQuery.eq("digest_send_day", day);
     }
 
     const { data: prefs, error: prefsError } = (await prefQuery) as {
@@ -236,8 +470,7 @@ Deno.serve(async (req) => {
 
     if (!prefs?.length) {
       return json(200, {
-        message: "No users due for digest.",
-        day,
+        message: "No users have monthly digest enabled.",
         periodMonth,
       });
     }
@@ -245,11 +478,48 @@ Deno.serve(async (req) => {
     const targetUserIds = new Set(prefs.map((p) => p.user_id));
     const emailByUserId = await listAuthUsers(supabase, targetUserIds);
 
+    const recentReports = await listRecentPerkReports(supabase, since);
+    const upvoteCounts = await listUpvoteCounts(
+      supabase,
+      recentReports.map((r) => r.id)
+    );
+    const topItems = rankTopPerkItems(recentReports, upvoteCounts, topCount);
+
+    const hotelIds = [...new Set(topItems.map((i) => i.hotel_id))];
+    let hotelMap = new Map<string, HotelRow>();
+    if (hotelIds.length) {
+      const { data: hotels, error: hotelError } = (await supabase
+        .from("hotels")
+        .select("id,name,slug,brand,location")
+        .in("id", hotelIds)) as { data: HotelRow[] | null; error: Error | null };
+      if (hotelError) throw hotelError;
+      hotelMap = new Map<string, HotelRow>((hotels || []).map((h) => [h.id, h]));
+    }
+
+    const html = buildDigestEmailHtml({
+      appBaseUrl,
+      hotelMap,
+      items: topItems,
+      windowDays,
+    });
+    const text = buildDigestText({
+      appBaseUrl,
+      hotelMap,
+      items: topItems,
+      windowDays,
+    });
+    const subject = topItems.length
+      ? `PerkSnob monthly digest: top ${topItems.length} perks from last ${windowDays} days`
+      : `PerkSnob monthly digest: no standout perks in last ${windowDays} days`;
+
     const summary = {
       periodMonth,
-      day,
       dryRun,
+      topCount,
+      windowDays,
       candidates: prefs.length,
+      rankedCandidateReports: recentReports.length,
+      digestItems: topItems.length,
       sent: 0,
       skipped: 0,
       failed: 0,
@@ -283,74 +553,12 @@ Deno.serve(async (req) => {
         }
       }
 
-      const { data: follows, error: followsError } = (await supabase
-        .from("hotel_follows")
-        .select("hotel_id")
-        .eq("user_id", userId)) as { data: FollowRow[] | null; error: Error | null };
-      if (followsError) {
-        await logDigest(supabase, userId, email, periodMonth, "failed", {
-          reason: "hotel_follows_query_failed",
-          error: followsError.message,
-        });
-        summary.failed += 1;
-        summary.details.push({ userId, status: "failed", reason: "hotel_follows_query_failed" });
-        continue;
-      }
-
-      const hotelIds = [...new Set((follows || []).map((f) => f.hotel_id))];
-      if (!hotelIds.length) {
-        await logDigest(supabase, userId, email, periodMonth, "skipped", {
-          reason: "no_follows",
-        });
-        summary.skipped += 1;
-        summary.details.push({ userId, status: "skipped", reason: "no_follows" });
-        continue;
-      }
-
-      const { data: hotels } = (await supabase
-        .from("hotels")
-        .select("id,name,slug,brand,location")
-        .in("id", hotelIds)) as { data: HotelRow[] | null };
-      const hotelMap = new Map<string, HotelRow>((hotels || []).map((h) => [h.id, h]));
-
-      const { data: recentPerks, error: perksError } = (await supabase
-        .from("perk_reports")
-        .select("id,user_id,hotel_id,category,description,created_at,display_name,elite_tier,stay_date")
-        .in("hotel_id", hotelIds)
-        .gte("created_at", since)
-        .neq("user_id", userId)
-        .order("stay_date", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(150)) as { data: PerkRow[] | null; error: Error | null };
-      if (perksError) {
-        await logDigest(supabase, userId, email, periodMonth, "failed", {
-          reason: "perk_query_failed",
-          error: perksError.message,
-        });
-        summary.failed += 1;
-        summary.details.push({ userId, status: "failed", reason: "perk_query_failed" });
-        continue;
-      }
-
-      const html = buildDigestEmailHtml({
-        appBaseUrl,
-        hotelMap,
-        recentPerks: recentPerks || [],
-        followedCount: hotelIds.length,
-      });
-
-      const subject = recentPerks?.length
-        ? `PerkSnob monthly digest: ${recentPerks.length} new updates`
-        : "PerkSnob monthly digest: no new updates yet";
-      const text = recentPerks?.length
-        ? `You have ${recentPerks.length} recent updates at followed hotels. Open ${appBaseUrl} to review and contribute.`
-        : `No new updates this month. Open ${appBaseUrl} to check your followed hotels and contribute.`;
-
       if (dryRun || !resendApiKey) {
         await logDigest(supabase, userId, email, periodMonth, "skipped", {
           reason: dryRun ? "dry_run" : "missing_resend_api_key",
-          recent_perks: recentPerks?.length || 0,
-          followed_hotels: hotelIds.length,
+          top_items: topItems.length,
+          ranked_candidate_reports: recentReports.length,
+          window_days: windowDays,
         });
         summary.skipped += 1;
         summary.details.push({
@@ -364,8 +572,9 @@ Deno.serve(async (req) => {
       try {
         await sendWithResend(resendApiKey, digestFrom, email, subject, html, text);
         await logDigest(supabase, userId, email, periodMonth, "sent", {
-          recent_perks: recentPerks?.length || 0,
-          followed_hotels: hotelIds.length,
+          top_items: topItems.length,
+          ranked_candidate_reports: recentReports.length,
+          window_days: windowDays,
         });
         summary.sent += 1;
         summary.details.push({ userId, status: "sent" });

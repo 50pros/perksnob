@@ -1,6 +1,17 @@
 # monthly-digest Edge Function
 
-Sends monthly recap emails to users who enabled digests in `user_notification_prefs`.
+Sends a monthly recap email with the top community-reported perks across the platform from the last 30 days.
+
+## How selection works
+
+- Pulls `perk_reports` from the last `windowDays` (default 30).
+- Groups similar reports by hotel + category + tier + description.
+- Scores each grouped item by total community confirmations:
+  - `report_count + upvote_count`
+- Ranks by confirmations, then recency.
+- Sends the top `topCount` items (default 15, clamped to 10-20).
+- Applies a small diversity cap (max 2 items per hotel) so one property does not dominate the digest.
+- Sends only on the last UTC day of each month (unless forced by request options).
 
 ## Required env vars
 
@@ -34,6 +45,9 @@ curl -X POST \
 ## Request body options
 
 - `dryRun` (`boolean`): if true, no email is sent; logs are written as `skipped`.
-- `forceDay` (`number` 1-28): override digest day matching.
+- `forceDay` (`number` 1-28): simulate UTC day for testing the month-end guard.
+- `forceRun` (`boolean`): bypass month-end guard.
 - `forceResend` (`boolean`): resend even if `email_digest_log` already has `sent` for this month.
 - `userIds` (`string[]`): limit to explicit user IDs.
+- `topCount` (`number`): desired number of digest items (clamped to 10-20, default 15).
+- `windowDays` (`number`): lookback window in days (clamped to 7-90, default 30).

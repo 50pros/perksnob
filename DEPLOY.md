@@ -58,7 +58,7 @@ If your project already exists and was created before March 1, 2026:
 3. Click **Run**
 4. This enables:
    - users following hotels (`hotel_follows`)
-   - monthly digest preferences (`user_notification_prefs`)
+   - monthly digest on/off preferences (`user_notification_prefs`)
    - digest send logs (`email_digest_log`)
 
 ### Optional: deploy monthly digest sender (Edge Function)
@@ -71,11 +71,12 @@ If your project already exists and was created before March 1, 2026:
    - `DIGEST_CRON_SECRET` (recommended)
 2. Deploy function:
    `supabase functions deploy monthly-digest --project-ref xzdpfnyvsgzdiuuamujv`
-3. Schedule monthly run (Supabase Scheduled Functions):
+3. Schedule run (Supabase Scheduled Functions):
    - Endpoint: `monthly-digest`
    - Method: `POST`
    - Body: `{}`
    - Header: `x-digest-secret: <your DIGEST_CRON_SECRET>`
+   - Recommended cron: daily (function auto-sends only on the last UTC day of month)
 
 ### Enable Google sign-in (optional but recommended):
 1. In Supabase sidebar → **Authentication** → **Providers**
