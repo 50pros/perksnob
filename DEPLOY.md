@@ -37,6 +37,31 @@ If your project already exists and was created before March 1, 2026:
    `insert into public.app_admins (user_id) values ('YOUR_AUTH_USER_UUID') on conflict do nothing;`
 5. Admins can then use the `/admin/requests` page to approve/reject requests
 
+### Optional: enable follows + monthly digest data model
+1. Open `supabase/migrations/20260304_follow_hotels_and_digest_prefs.sql`
+2. Paste into Supabase SQL Editor
+3. Click **Run**
+4. This enables:
+   - users following hotels (`hotel_follows`)
+   - monthly digest preferences (`user_notification_prefs`)
+   - digest send logs (`email_digest_log`)
+
+### Optional: deploy monthly digest sender (Edge Function)
+1. Set function secrets in Supabase:
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `RESEND_API_KEY`
+   - `DIGEST_FROM_EMAIL`
+   - `APP_BASE_URL` (optional)
+   - `DIGEST_CRON_SECRET` (recommended)
+2. Deploy function:
+   `supabase functions deploy monthly-digest --project-ref xzdpfnyvsgzdiuuamujv`
+3. Schedule monthly run (Supabase Scheduled Functions):
+   - Endpoint: `monthly-digest`
+   - Method: `POST`
+   - Body: `{}`
+   - Header: `x-digest-secret: <your DIGEST_CRON_SECRET>`
+
 ### Enable Google sign-in (optional but recommended):
 1. In Supabase sidebar → **Authentication** → **Providers**
 2. Toggle on **Google**
@@ -67,6 +92,12 @@ git commit -m "Initial commit"
 git remote add origin https://github.com/YOUR_USERNAME/eliteperks.git
 git push -u origin main
 ```
+
+### Refresh SEO sitemap from live hotels (recommended before push):
+```bash
+npm run generate:sitemap
+```
+This regenerates `public/sitemap.xml` from all approved hotels in Supabase and removes stale URLs.
 
 ---
 
