@@ -23,6 +23,12 @@ If your project already exists and was created before March 1, 2026:
    - Tiers: Ambassador, Titanium, Platinum, Gold, Silver
    - Categories: 18 total (including WiFi, Shower, Security, Pool, Staff Service, Restaurant)
 
+### Optional: enable missing-hotel requests from users
+1. Open `supabase/migrations/20260302_add_hotel_requests.sql`
+2. Paste into Supabase SQL Editor
+3. Click **Run**
+4. This creates the `hotel_requests` queue table + RLS policies
+
 ### Enable Google sign-in (optional but recommended):
 1. In Supabase sidebar → **Authentication** → **Providers**
 2. Toggle on **Google**
