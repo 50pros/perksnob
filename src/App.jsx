@@ -828,3 +828,4 @@ return<><div style={{marginBottom:14,marginTop:42}}><span style={{fontSize:12,co
 {!sortedFilt.length&&<div style={{textAlign:"center",padding:"60px 20px"}}><h3 style={{fontSize:20,fontWeight:700,color:"#0f172a",fontFamily:FD,marginBottom:6}}>No hotels found</h3><p style={{fontSize:13,color:"#94a3b8",marginBottom:20}}>Try a different search or filter.</p><button onClick={()=>{ss("");sbf("");setPF([]);setRF("")}} style={BT()}>Clear Filters</button></div>}</>}
 })()}</>}</div>
 <Footer/></div>}
+
