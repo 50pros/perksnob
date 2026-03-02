@@ -29,6 +29,14 @@ If your project already exists and was created before March 1, 2026:
 3. Click **Run**
 4. This creates the `hotel_requests` queue table + RLS policies
 
+### Optional: enable admin review queue for hotel requests
+1. Open `supabase/migrations/20260303_admin_hotel_request_review.sql`
+2. Paste into Supabase SQL Editor
+3. Click **Run**
+4. Add at least one admin user id:
+   `insert into public.app_admins (user_id) values ('YOUR_AUTH_USER_UUID') on conflict do nothing;`
+5. Admins can then use the `/admin/requests` page to approve/reject requests
+
 ### Enable Google sign-in (optional but recommended):
 1. In Supabase sidebar → **Authentication** → **Providers**
 2. Toggle on **Google**
