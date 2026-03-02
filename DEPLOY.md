@@ -37,6 +37,12 @@ If your project already exists and was created before March 1, 2026:
    `insert into public.app_admins (user_id) values ('YOUR_AUTH_USER_UUID') on conflict do nothing;`
 5. Admins can then use the `/admin/requests` page to approve/reject requests
 
+### Optional: enable admin hotel profile editing
+1. Open `supabase/migrations/20260306_admin_hotel_update_policy.sql`
+2. Paste into Supabase SQL Editor
+3. Click **Run**
+4. Admins can then use `/admin/hotels` to edit hotel metadata directly
+
 ### Optional: enable email alerts on new hotel requests
 1. Open `supabase/migrations/20260305_hotel_request_alerts.sql`
 2. Paste into Supabase SQL Editor

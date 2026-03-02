@@ -37,6 +37,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://perksnob.com/brand/autograph-collection</loc>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://perksnob.com/brand/bulgari</loc>
     <lastmod>2026-03-02</lastmod>
     <changefreq>weekly</changefreq>
@@ -145,6 +151,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://perksnob.com/brand/other</loc>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://perksnob.com/brand/protea-hotels</loc>
     <lastmod>2026-03-02</lastmod>
     <changefreq>weekly</changefreq>
@@ -200,6 +212,12 @@
   </url>
   <url>
     <loc>https://perksnob.com/brand/w-hotels</loc>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://perksnob.com/brand/westin</loc>
     <lastmod>2026-03-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -398,6 +416,12 @@
   </url>
   <url>
     <loc>https://perksnob.com/city/albany</loc>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://perksnob.com/city/alberta</loc>
     <lastmod>2026-03-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -45631,6 +45655,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://perksnob.com/hotel/jw-ice-district</loc>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://perksnob.com/hotel/jw-marriott-ankara</loc>
     <lastmod>2026-03-02</lastmod>
     <changefreq>weekly</changefreq>
@@ -45740,6 +45770,12 @@
   </url>
   <url>
     <loc>https://perksnob.com/hotel/jw-marriott-gold-coast</loc>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://perksnob.com/hotel/jw-marriott-hangzhou</loc>
     <lastmod>2026-03-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -45950,6 +45986,12 @@
   </url>
   <url>
     <loc>https://perksnob.com/hotel/kampala-marriott-hotel</loc>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://perksnob.com/hotel/kananaskis-mountain-lodge</loc>
     <lastmod>2026-03-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -46862,6 +46904,12 @@
   </url>
   <url>
     <loc>https://perksnob.com/hotel/le-meridien-nantong</loc>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://perksnob.com/hotel/le-meridien-saigon</loc>
     <lastmod>2026-03-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -66853,6 +66901,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://perksnob.com/hotel/the-westin-singapore</loc>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://perksnob.com/hotel/the-woodlands-waterway-marriott-hotel-convention-center</loc>
     <lastmod>2026-03-02</lastmod>
     <changefreq>weekly</changefreq>
@@ -71120,6 +71174,12 @@
   </url>
   <url>
     <loc>https://perksnob.com/hotel/westin-excelsior-rome</loc>
+    <lastmod>2026-03-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://perksnob.com/hotel/westin-playa-bonita-panama</loc>
     <lastmod>2026-03-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
