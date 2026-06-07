@@ -240,3 +240,85 @@ export async function getHotelsByRegion(regionSlug: string): Promise<HotelList |
     hotels: (data ?? []) as DirectoryHotel[],
   };
 }
+
+/* Homepage curated rows ---------------------------------------------------- */
+
+export interface HomeHotel {
+  slug: string;
+  name: string;
+  brand: string;
+  location: string;
+  region: string | null;
+  score: number;
+  report_count: number;
+  categories: string[];
+}
+
+export interface HomeRow {
+  key: string;
+  title: string;
+  subtitle: string;
+  hotels: HomeHotel[];
+}
+
+const LUXURY_BRANDS = new Set([
+  "The Ritz-Carlton",
+  "St. Regis",
+  "W Hotels",
+  "EDITION",
+  "The Luxury Collection",
+  "JW Marriott",
+]);
+
+export async function getHomeRows(): Promise<HomeRow[]> {
+  const { data } = await sb
+    .from("hotel_home")
+    .select("slug,name,brand,location,region,score,report_count,categories")
+    .gt("report_count", 0)
+    .order("score", { ascending: false })
+    .order("report_count", { ascending: false })
+    .limit(500);
+  const hotels = (data ?? []) as HomeHotel[];
+  const has = (h: HomeHotel, c: string) => h.categories?.includes(c);
+  const take = (arr: HomeHotel[], n = 12) => arr.slice(0, n);
+
+  const rows: HomeRow[] = [
+    {
+      key: "top",
+      title: "Top Rated Properties",
+      subtitle: "Highest community perk scores across every brand",
+      hotels: take(hotels),
+    },
+    {
+      key: "luxury",
+      title: "Best for Ambassador & Titanium Elite",
+      subtitle: "Luxury brands — Ritz-Carlton, St. Regis, W, EDITION, JW Marriott",
+      hotels: take(hotels.filter((h) => LUXURY_BRANDS.has(h.brand))),
+    },
+    {
+      key: "breakfast",
+      title: "Free Breakfast Confirmed",
+      subtitle: "Where guests report complimentary elite breakfast",
+      hotels: take(hotels.filter((h) => has(h, "breakfast"))),
+    },
+    {
+      key: "lounge",
+      title: "Lounge Access Available",
+      subtitle: "Properties with an executive lounge reported open",
+      hotels: take(hotels.filter((h) => has(h, "lounge"))),
+    },
+    {
+      key: "upgrade",
+      title: "Suite Upgrade Friendly",
+      subtitle: "Where elite guests have landed room upgrades",
+      hotels: take(hotels.filter((h) => has(h, "upgrade"))),
+    },
+    {
+      key: "most",
+      title: "Most Reported",
+      subtitle: "The properties with the most community activity",
+      hotels: take([...hotels].sort((a, b) => b.report_count - a.report_count)),
+    },
+  ];
+  return rows.filter((r) => r.hotels.length >= 3);
+}

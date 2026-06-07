@@ -14,12 +14,7 @@ export default function Header() {
           <Link href="/hotels" className="transition-colors hover:text-ink">Hotels</Link>
           <Link href="/brands" className="transition-colors hover:text-ink">Brands</Link>
           <Link href="/how-it-works" className="transition-colors hover:text-ink">How it works</Link>
-          <Link
-            href="/for-hotels"
-            className="rounded-full bg-ink px-4 py-1.5 font-medium text-paper transition-colors hover:bg-accent"
-          >
-            For hotels
-          </Link>
+          <Link href="/for-hotels" className="text-ink-soft/70 transition-colors hover:text-ink">For hotels</Link>
         </nav>
       </div>
     </header>

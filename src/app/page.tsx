@@ -1,6 +1,11 @@
 import Link from "next/link";
 import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
+import HotelSearch from "@/components/hotel/HotelSearch";
+import HotelScrollRow from "@/components/hotel/HotelScrollRow";
+import { getHomeRows } from "@/lib/data";
+
+export const revalidate = 3600;
 
 const toneClass: Record<string, string> = {
   delivered: "text-delivered",
@@ -15,39 +20,39 @@ const SPECIMEN: Array<[string, string, number, keyof typeof toneClass]> = [
   ["4 PM late checkout", "On request", 23, "disputed"],
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const rows = await getHomeRows();
+
   return (
     <main className="min-h-screen bg-paper text-ink">
       <Header />
 
       {/* Hero --------------------------------------------------------------- */}
-      <section className="mx-auto max-w-content px-6 pb-16 pt-20">
+      <section className="mx-auto max-w-content px-6 pb-10 pt-20">
         <p className="text-[13px] font-medium uppercase tracking-eyebrow text-accent">
-          The elite benefits registry
+          The Marriott Bonvoy elite benefits directory
         </p>
-        <h1 className="mt-5 max-w-[15ch] font-display text-5xl font-semibold leading-[1.04] tracking-tight sm:text-6xl">
-          What Marriott elites <span className="italic">actually</span> get.
+        <h1 className="mt-5 max-w-[20ch] font-display text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
+          Discover hotels, for the <span className="italic">elite perks</span>
         </h1>
         <p className="mt-6 max-w-prose text-lg leading-relaxed text-ink-soft">
-          Hotels declare the perks they offer each elite tier. Guests confirm what they
-          really received. The gap between the two is the truth — and it lives here.
+          A platform for Titanium, Platinum, and Ambassador Elite members to discover,
+          browse, search, and find what perks &amp; benefits hotel properties provide.
         </p>
-        <div className="mt-8 flex flex-wrap items-center gap-3">
+
+        <div className="mt-8 max-w-2xl">
+          <HotelSearch />
+        </div>
+        <div className="mt-4">
           <Link
             href="/hotels"
-            className="rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-colors hover:bg-accent"
+            className="text-sm font-medium text-accent underline-offset-4 hover:underline"
           >
-            Browse 8,982 properties
-          </Link>
-          <Link
-            href="/for-hotels"
-            className="rounded-full border border-line px-6 py-3 text-sm font-medium text-ink transition-colors hover:border-ink"
-          >
-            Claim your hotel →
+            Browse all 8,982 properties →
           </Link>
         </div>
 
-        <dl className="mt-14 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-4">
+        <dl className="mt-12 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-4">
           {[
             ["8,982", "Properties"],
             ["18", "Perk categories"],
@@ -62,11 +67,23 @@ export default function HomePage() {
         </dl>
       </section>
 
-      {/* Specimen: claimed vs delivered ------------------------------------- */}
+      {/* Curated property rows ---------------------------------------------- */}
+      <section className="mx-auto max-w-content px-6 pb-10">
+        {rows.map((r) => (
+          <HotelScrollRow
+            key={r.key}
+            title={r.title}
+            subtitle={r.subtitle}
+            hotels={r.hotels}
+          />
+        ))}
+      </section>
+
+      {/* How to read a hotel: the honesty gap ------------------------------- */}
       <section className="border-t border-line bg-paper-raised">
         <div className="mx-auto max-w-content px-6 py-16">
           <p className="text-[13px] font-medium uppercase tracking-eyebrow text-ink-soft">
-            A property at a glance
+            How to read a property
           </p>
           <div className="mt-6 grid gap-10 lg:grid-cols-[1.1fr_1fr]">
             <div>
@@ -97,16 +114,16 @@ export default function HomePage() {
             <aside className="self-start rounded-xl border border-line bg-paper p-7">
               <p className="font-display text-lg font-semibold">The honesty gap</p>
               <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                When a hotel claims a perk guests routinely don&rsquo;t receive, the gap
-                shows. That&rsquo;s the signal Marriott&rsquo;s own marketing will never
-                give you.
+                Hotels declare the perks they offer each tier. Guests confirm what they
+                actually received. When a hotel claims a perk guests routinely don&rsquo;t
+                get, the gap shows — the signal Marriott&rsquo;s own marketing never gives
+                you.
               </p>
               <div className="mt-6 rounded-lg bg-accent-soft p-5">
                 <p className="text-sm font-medium text-accent">Delivery score</p>
                 <p className="mt-1 font-display text-5xl font-semibold text-accent">B+</p>
                 <p className="mt-2 text-xs leading-relaxed text-ink-soft">
-                  Declares 12 perks · 71% average delivery · confirmed by 240 guests ·
-                  updated 3 days ago
+                  Declares 12 perks · 71% average delivery · confirmed by 240 guests
                 </p>
               </div>
             </aside>
