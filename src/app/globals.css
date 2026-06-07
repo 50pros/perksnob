@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  ::selection {
+    background: #0f172a;
+    color: #fff;
+  }
+  html,
+  body,
+  #__next {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  *:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  .ps-row::-webkit-scrollbar {
+    display: none;
+  }
+  .ps-row {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .ps-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  .ps-nav {
+    order: 1;
+    width: 100%;
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+  }
+  .ps-auth {
+    order: 2;
+    width: 100%;
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .ps-detail-layout {
+    flex-direction: column !important;
+  }
+  .ps-tips-sidebar {
+    flex: 1 1 auto !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .ps-stats > div {
+    flex-direction: column !important;
+    gap: 2px !important;
+  }
+}
