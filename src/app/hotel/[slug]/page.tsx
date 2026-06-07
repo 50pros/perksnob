@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
+import DeclaredPerks from "@/components/perk/DeclaredPerks";
 import { getHotelBySlug, getHotelPageData } from "@/lib/data";
 import { CATS } from "@/lib/constants";
 import type { EliteTier, PerkCategory } from "@/lib/types";
@@ -149,37 +150,7 @@ export default async function HotelPage({
 
           {/* Declared by the hotel */}
           {declaredOffered.length > 0 && (
-            <section className="mt-12">
-              <div className="flex items-baseline justify-between border-b border-line pb-3">
-                <h2 className="font-display text-2xl font-semibold tracking-tight">
-                  What the hotel offers
-                </h2>
-                <span className="rounded-full border border-delivered/40 bg-delivered/10 px-3 py-1 text-xs font-medium text-delivered">
-                  Declared by the hotel
-                </span>
-              </div>
-              <ul>
-                {declaredOffered.map((d) => {
-                  const meta = catMeta(d.category);
-                  return (
-                    <li
-                      key={d.id}
-                      className="flex items-start gap-3.5 border-b border-line py-4"
-                    >
-                      <span className="mt-0.5 text-xl leading-none" aria-hidden>
-                        {meta.icon}
-                      </span>
-                      <div>
-                        <p className="font-medium">{meta.label}</p>
-                        {d.notes && (
-                          <p className="text-sm text-ink-soft">{d.notes}</p>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
+            <DeclaredPerks perks={declaredOffered} slug={hotel.slug} />
           )}
 
           {/* Community perks */}

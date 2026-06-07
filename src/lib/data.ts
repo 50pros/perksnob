@@ -41,9 +41,16 @@ function outcomeOf(
   return "received";
 }
 
+export interface DeclaredPerkView extends HotelPerk {
+  received: number;
+  notReceived: number;
+  partial: number;
+  deliveryRate: number | null;
+}
+
 export interface HotelPageData {
   hotel: Hotel;
-  declared: HotelPerk[];
+  declared: DeclaredPerkView[];
   community: CommunityPerk[];
   reportCount: number;
   isClaimed: boolean;
@@ -108,9 +115,40 @@ export async function getHotelPageData(
     }))
     .sort((a, b) => b.reports - a.reports);
 
+  const declaredRows = (declaredRes.data ?? []) as HotelPerk[];
+  const declaredIds = declaredRows.map((d) => d.id);
+  const vmap = new Map<
+    string,
+    { received: number; notReceived: number; partial: number }
+  >();
+  if (declaredIds.length > 0) {
+    const { data: vers } = await sb
+      .from("perk_verifications")
+      .select("hotel_perk_id, outcome")
+      .in("hotel_perk_id", declaredIds);
+    for (const v of (vers ?? []) as {
+      hotel_perk_id: string;
+      outcome: string;
+    }[]) {
+      let s = vmap.get(v.hotel_perk_id);
+      if (!s) {
+        s = { received: 0, notReceived: 0, partial: 0 };
+        vmap.set(v.hotel_perk_id, s);
+      }
+      if (v.outcome === "received") s.received += 1;
+      else if (v.outcome === "not_received") s.notReceived += 1;
+      else s.partial += 1;
+    }
+  }
+  const declared: DeclaredPerkView[] = declaredRows.map((d) => {
+    const s = vmap.get(d.id) ?? { received: 0, notReceived: 0, partial: 0 };
+    const denom = s.received + s.notReceived;
+    return { ...d, ...s, deliveryRate: denom > 0 ? s.received / denom : null };
+  });
+
   return {
     hotel,
-    declared: (declaredRes.data ?? []) as HotelPerk[],
+    declared,
     community,
     reportCount: reportsRes.data?.length ?? 0,
     isClaimed: (claimsRes.data?.length ?? 0) > 0,
