@@ -156,3 +156,49 @@ export async function getRegionDirectory(): Promise<
     .select("region,hotel_count");
   return (data ?? []) as { region: string; hotel_count: number }[];
 }
+
+export function slugify(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+export interface HotelList {
+  label: string;
+  count: number;
+  hotels: DirectoryHotel[];
+}
+
+export async function getHotelsByBrand(brandSlug: string): Promise<HotelList | null> {
+  const brands = await getBrandDirectory();
+  const match = brands.find((b) => slugify(b.brand) === brandSlug);
+  if (!match) return null;
+  const { data } = await sb
+    .from("hotel_directory")
+    .select("slug,name,brand,location,region,country,report_count")
+    .eq("brand", match.brand)
+    .order("report_count", { ascending: false })
+    .order("name", { ascending: true })
+    .limit(120);
+  return {
+    label: match.brand,
+    count: match.hotel_count,
+    hotels: (data ?? []) as DirectoryHotel[],
+  };
+}
+
+export async function getHotelsByRegion(regionSlug: string): Promise<HotelList | null> {
+  const regions = await getRegionDirectory();
+  const match = regions.find((r) => slugify(r.region) === regionSlug);
+  if (!match) return null;
+  const { data } = await sb
+    .from("hotel_directory")
+    .select("slug,name,brand,location,region,country,report_count")
+    .eq("region", match.region)
+    .order("report_count", { ascending: false })
+    .order("name", { ascending: true })
+    .limit(120);
+  return {
+    label: match.region,
+    count: match.hotel_count,
+    hotels: (data ?? []) as DirectoryHotel[],
+  };
+}

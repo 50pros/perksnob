@@ -4,13 +4,13 @@ import { notFound } from "next/navigation";
 import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
 import HotelCard from "@/components/hotel/HotelCard";
-import { getHotelsByBrand, getBrandDirectory, slugify } from "@/lib/data";
+import { getHotelsByRegion, getRegionDirectory, slugify } from "@/lib/data";
 
 export const revalidate = 3600;
 
 export async function generateStaticParams() {
-  const brands = await getBrandDirectory();
-  return brands.map((b) => ({ slug: slugify(b.brand) }));
+  const regions = await getRegionDirectory();
+  return regions.map((r) => ({ slug: slugify(r.region) }));
 }
 
 export async function generateMetadata({
@@ -19,20 +19,20 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const res = await getHotelsByBrand(slug);
-  if (!res) return { title: "Brand not found" };
-  const title = `${res.label} elite perks — every property`;
-  const description = `Browse all ${res.count} ${res.label} properties and see the Marriott Bonvoy elite perks guests actually receive at each.`;
-  return { title, description, alternates: { canonical: `/brand/${slug}` } };
+  const res = await getHotelsByRegion(slug);
+  if (!res) return { title: "Region not found" };
+  const title = `Marriott elite perks in ${res.label}`;
+  const description = `Browse ${res.count} Marriott Bonvoy properties in ${res.label} and see the elite perks guests actually receive at each.`;
+  return { title, description, alternates: { canonical: `/region/${slug}` } };
 }
 
-export default async function BrandPage({
+export default async function RegionPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const res = await getHotelsByBrand(slug);
+  const res = await getHotelsByRegion(slug);
   if (!res) notFound();
 
   return (
@@ -48,13 +48,13 @@ export default async function BrandPage({
         </nav>
 
         <p className="mt-6 text-[13px] font-medium uppercase tracking-eyebrow text-accent">
-          Brand
+          Region
         </p>
         <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight sm:text-5xl">
           {res.label}
         </h1>
         <p className="mt-3 text-ink-soft">
-          {res.count} propert{res.count === 1 ? "y" : "ies"} in the portfolio
+          {res.count} propert{res.count === 1 ? "y" : "ies"}
         </p>
 
         <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -65,11 +65,7 @@ export default async function BrandPage({
 
         {res.count > res.hotels.length && (
           <p className="mt-6 text-sm text-ink-soft">
-            Showing the {res.hotels.length} most-reported of {res.count}. Use{" "}
-            <Link href="/hotels" className="text-accent underline underline-offset-2">
-              search
-            </Link>{" "}
-            to find a specific property.
+            Showing the {res.hotels.length} most-reported of {res.count}.
           </p>
         )}
       </div>
