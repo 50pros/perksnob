@@ -48,12 +48,30 @@ export interface DeclaredPerkView extends HotelPerk {
   deliveryRate: number | null;
 }
 
+export interface DeliveryScore {
+  grade: string;
+  avgDelivery: number;
+  declaredCount: number;
+  confirmations: number;
+}
+
+function gradeFor(rate: number): string {
+  if (rate >= 0.9) return "A+";
+  if (rate >= 0.8) return "A";
+  if (rate >= 0.7) return "B+";
+  if (rate >= 0.6) return "B";
+  if (rate >= 0.5) return "C";
+  if (rate >= 0.35) return "D";
+  return "F";
+}
+
 export interface HotelPageData {
   hotel: Hotel;
   declared: DeclaredPerkView[];
   community: CommunityPerk[];
   reportCount: number;
   isClaimed: boolean;
+  deliveryScore: DeliveryScore | null;
 }
 
 export async function getHotelPageData(
@@ -146,12 +164,32 @@ export async function getHotelPageData(
     return { ...d, ...s, deliveryRate: denom > 0 ? s.received / denom : null };
   });
 
+  // Per-hotel delivery score: weighted average of declared perks' delivery
+  // rates, graded A+…F. Needs a minimum sample so a single vote can't set it.
+  const offeredRated = declared.filter((d) => d.offered && d.deliveryRate !== null);
+  const confirmations = offeredRated.reduce((s, d) => s + d.received + d.notReceived, 0);
+  let deliveryScore: DeliveryScore | null = null;
+  if (offeredRated.length > 0 && confirmations >= 5) {
+    const avg =
+      offeredRated.reduce(
+        (s, d) => s + (d.deliveryRate ?? 0) * (d.received + d.notReceived),
+        0,
+      ) / confirmations;
+    deliveryScore = {
+      grade: gradeFor(avg),
+      avgDelivery: avg,
+      declaredCount: declared.filter((d) => d.offered).length,
+      confirmations,
+    };
+  }
+
   return {
     hotel,
     declared,
     community,
     reportCount: reportsRes.data?.length ?? 0,
     isClaimed: (claimsRes.data?.length ?? 0) > 0,
+    deliveryScore,
   };
 }
 

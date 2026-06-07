@@ -57,7 +57,7 @@ export default async function HotelPage({
   const data = await getHotelPageData(slug);
   if (!data) notFound();
 
-  const { hotel, community, reportCount, isClaimed, declared } = data;
+  const { hotel, community, reportCount, isClaimed, declared, deliveryScore } = data;
   const declaredOffered = declared.filter((d) => d.offered);
   const brandSlug = slugify(hotel.brand);
 
@@ -145,6 +145,27 @@ export default async function HotelPage({
                 </Link>{" "}
                 to publish your official elite benefits.
               </p>
+            </div>
+          )}
+
+          {/* Delivery score */}
+          {deliveryScore && (
+            <div className="mt-7 flex items-center gap-5 rounded-xl border border-line bg-paper-raised p-6">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-accent-soft">
+                <span className="font-display text-3xl font-semibold text-accent">
+                  {deliveryScore.grade}
+                </span>
+              </div>
+              <div>
+                <p className="font-display text-lg font-semibold">Delivery score</p>
+                <p className="mt-0.5 text-sm text-ink-soft">
+                  Declares {deliveryScore.declaredCount} perk
+                  {deliveryScore.declaredCount === 1 ? "" : "s"} ·{" "}
+                  {Math.round(deliveryScore.avgDelivery * 100)}% average delivery ·{" "}
+                  {deliveryScore.confirmations} guest confirmation
+                  {deliveryScore.confirmations === 1 ? "" : "s"}
+                </p>
+              </div>
             </div>
           )}
 
