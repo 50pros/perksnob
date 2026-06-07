@@ -9,3 +9,6 @@ out/
 !.env.example
 *.tsbuildinfo
 next-env.d.ts
+
+supabase/.temp/
+supabase/_live_schema.sql

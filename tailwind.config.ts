@@ -4,37 +4,39 @@ const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
-      fontFamily: {
-        sans: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
-        serif: ["var(--font-playfair)", "Georgia", "serif"],
-      },
       colors: {
-        score: {
-          green: "#059669",
-          amber: "#d97706",
-          red: "#dc2626",
-        },
-        tier: {
-          ambassador: "#1a1a1a",
-          titanium: "#6b7280",
-          platinum: "#9ca3af",
-          gold: "#d97706",
-          silver: "#a3a3a3",
-        },
+        paper: { DEFAULT: "var(--paper)", raised: "var(--paper-raised)" },
+        ink: { DEFAULT: "var(--ink)", soft: "var(--ink-soft)" },
+        line: "var(--line)",
+        accent: { DEFAULT: "var(--accent)", soft: "var(--accent-soft)" },
+        delivered: "var(--delivered)",
+        partial: "var(--partial)",
+        disputed: "var(--disputed)",
+      },
+      fontFamily: {
+        display: ["var(--font-fraunces)", "ui-serif", "Georgia", "serif"],
+        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
+      },
+      maxWidth: {
+        content: "1080px",
+        prose: "680px",
+      },
+      letterSpacing: {
+        eyebrow: "0.18em",
       },
       keyframes: {
         shimmer: {
           "0%": { backgroundPosition: "200% 0" },
           "100%": { backgroundPosition: "-200% 0" },
         },
-        "slide-in": {
-          from: { opacity: "0", transform: "translateY(10px)" },
+        "fade-up": {
+          from: { opacity: "0", transform: "translateY(8px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
       },
       animation: {
         shimmer: "shimmer 1.5s infinite",
-        "slide-in": "slide-in 0.2s ease",
+        "fade-up": "fade-up 0.25s ease",
       },
     },
   },

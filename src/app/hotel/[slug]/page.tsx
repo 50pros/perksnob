@@ -1,92 +1,69 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createServerSupabase } from "@/lib/supabase/server";
-import type { Hotel } from "@/lib/types";
-import HotelDetailClient from "./HotelDetailClient";
+import Header from "@/components/site/Header";
+import Footer from "@/components/site/Footer";
+import { getHotelBySlug, getHotelPageData } from "@/lib/data";
+import { CATS } from "@/lib/constants";
+import type { EliteTier, PerkCategory } from "@/lib/types";
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                             */
-/* ------------------------------------------------------------------ */
+export const revalidate = 3600; // ISR: pages cache for an hour, regenerate on demand
+export const dynamicParams = true;
 
-interface HotelPageProps {
-  params: Promise<{ slug: string }>;
+export async function generateStaticParams() {
+  return []; // generate every hotel page on first request, then cache (keeps builds fast)
 }
 
-/* ------------------------------------------------------------------ */
-/*  generateMetadata                                                  */
-/* ------------------------------------------------------------------ */
+const slugify = (s: string) =>
+  s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+const catMeta = (k: PerkCategory) =>
+  CATS.find((c) => c.key === k) ?? { icon: "•", label: k };
+
+const tierLabel = (t: EliteTier) => t.charAt(0).toUpperCase() + t.slice(1);
+
+function toneClass(rate: number | null): string {
+  if (rate === null) return "text-ink-soft";
+  if (rate >= 0.7) return "text-delivered";
+  if (rate >= 0.4) return "text-partial";
+  return "text-disputed";
+}
 
 export async function generateMetadata({
   params,
-}: HotelPageProps): Promise<Metadata> {
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
   const { slug } = await params;
-  const supabase = await createServerSupabase();
-
-  const { data: hotel } = await supabase
-    .from("hotels")
-    .select("*")
-    .eq("slug", slug)
-    .single<Hotel>();
-
-  if (!hotel) {
-    return { title: "Hotel Not Found | PerkSnob" };
-  }
-
-  // Fetch perk count for description
-  const { count: perkCount } = await supabase
-    .from("perk_reports")
-    .select("*", { count: "exact", head: true })
-    .eq("hotel_id", hotel.id);
-
-  const title = `${hotel.name} Elite Perks | PerkSnob`;
-  const description = `${perkCount || 0} crowdsourced Marriott Bonvoy elite perk reports at ${hotel.name} (${hotel.brand}) in ${hotel.location}. Real guest data for Titanium, Platinum, and Ambassador Elite benefits.`;
-
+  const hotel = await getHotelBySlug(slug);
+  if (!hotel) return { title: "Hotel not found" };
+  const title = `${hotel.name} — elite perks & benefits`;
+  const description = `What Marriott Bonvoy elites actually receive at ${hotel.name} (${hotel.brand}) in ${hotel.location} — perks declared by the hotel and confirmed by real guests.`;
   return {
     title,
     description,
-    openGraph: {
-      title,
-      description,
-      url: `/hotel/${hotel.slug}`,
-      images: [{ url: "/og-image.png", width: 1200, height: 630 }],
-    },
+    alternates: { canonical: `/hotel/${hotel.slug}` },
+    openGraph: { title, description, url: `/hotel/${hotel.slug}` },
   };
 }
 
-/* ------------------------------------------------------------------ */
-/*  Server component                                                  */
-/* ------------------------------------------------------------------ */
-
-export default async function HotelPage({ params }: HotelPageProps) {
+export default async function HotelPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
-  const supabase = await createServerSupabase();
+  const data = await getHotelPageData(slug);
+  if (!data) notFound();
 
-  const { data: hotel } = await supabase
-    .from("hotels")
-    .select("*")
-    .eq("slug", slug)
-    .single<Hotel>();
+  const { hotel, community, reportCount, isClaimed } = data;
+  const brandSlug = slugify(hotel.brand);
 
-  if (!hotel) {
-    notFound();
-  }
-
-  // Fetch initial perk count + score for JSON-LD
-  const { count: perkCount } = await supabase
-    .from("perk_reports")
-    .select("*", { count: "exact", head: true })
-    .eq("hotel_id", hotel.id);
-
-  const score =
-    perkCount && perkCount > 0
-      ? Math.min(100, perkCount * 3 + 8)
-      : 0;
-
-  /* --- JSON-LD Hotel schema --------------------------------------- */
   const jsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Hotel",
     name: hotel.name,
+    brand: { "@type": "Brand", name: hotel.brand },
     address: {
       "@type": "PostalAddress",
       streetAddress: hotel.address || undefined,
@@ -94,29 +71,17 @@ export default async function HotelPage({ params }: HotelPageProps) {
       addressCountry: hotel.country || undefined,
     },
     telephone: hotel.phone || undefined,
-    brand: {
-      "@type": "Brand",
-      name: hotel.brand,
-    },
     url: hotel.website || undefined,
+    ...(hotel.latitude && hotel.longitude
+      ? {
+          geo: {
+            "@type": "GeoCoordinates",
+            latitude: hotel.latitude,
+            longitude: hotel.longitude,
+          },
+        }
+      : {}),
   };
-
-  if (hotel.latitude && hotel.longitude) {
-    jsonLd.geo = {
-      "@type": "GeoCoordinates",
-      latitude: hotel.latitude,
-      longitude: hotel.longitude,
-    };
-  }
-
-  if (score > 0) {
-    jsonLd.aggregateRating = {
-      "@type": "AggregateRating",
-      ratingValue: (score / 20).toFixed(1),
-      bestRating: "5",
-      ratingCount: perkCount || 0,
-    };
-  }
 
   return (
     <>
@@ -124,7 +89,148 @@ export default async function HotelPage({ params }: HotelPageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <HotelDetailClient hotel={hotel} />
+      <main className="min-h-screen bg-paper text-ink">
+        <Header />
+        <div className="mx-auto max-w-content px-6 py-10">
+          {/* Breadcrumb */}
+          <nav className="text-sm text-ink-soft">
+            <Link href="/" className="transition-colors hover:text-ink">Home</Link>
+            <span className="px-2">/</span>
+            <Link href={`/brand/${brandSlug}`} className="transition-colors hover:text-ink">
+              {hotel.brand}
+            </Link>
+            <span className="px-2">/</span>
+            <span className="text-ink">{hotel.name}</span>
+          </nav>
+
+          {/* Header row */}
+          <div className="mt-6 flex flex-wrap items-start justify-between gap-5">
+            <div>
+              <p className="text-[13px] font-medium uppercase tracking-eyebrow text-accent">
+                {hotel.brand}
+              </p>
+              <h1 className="mt-2 max-w-[20ch] font-display text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl">
+                {hotel.name}
+              </h1>
+              <p className="mt-3 text-ink-soft">
+                {hotel.location}
+                {hotel.region ? ` · ${hotel.region}` : ""}
+              </p>
+            </div>
+            {isClaimed ? (
+              <span className="rounded-full border border-delivered/40 bg-delivered/10 px-3.5 py-1.5 text-sm font-medium text-delivered">
+                ✓ Verified by the hotel
+              </span>
+            ) : (
+              <Link
+                href="/for-hotels"
+                className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent"
+              >
+                Are you the hotel? Claim this page
+              </Link>
+            )}
+          </div>
+
+          {/* Unclaimed notice */}
+          {!isClaimed && (
+            <div className="mt-7 rounded-xl border border-line bg-paper-raised p-5">
+              <p className="text-sm leading-relaxed text-ink-soft">
+                This profile hasn&rsquo;t been claimed by the hotel yet. The perks below
+                are <span className="font-medium text-ink">reported by guests</span>, not
+                confirmed by the property. If you manage {hotel.name},{" "}
+                <Link href="/for-hotels" className="font-medium text-accent underline underline-offset-2">
+                  claim it
+                </Link>{" "}
+                to publish your official elite benefits.
+              </p>
+            </div>
+          )}
+
+          {/* Community perks */}
+          <section className="mt-12">
+            <div className="flex items-baseline justify-between border-b border-line pb-3">
+              <h2 className="font-display text-2xl font-semibold tracking-tight">
+                What guests report
+              </h2>
+              <p className="text-sm text-ink-soft">
+                {reportCount} report{reportCount === 1 ? "" : "s"}
+              </p>
+            </div>
+
+            {community.length === 0 ? (
+              <div className="mt-8 rounded-xl border border-dashed border-line p-12 text-center">
+                <p className="font-medium">No guest reports yet.</p>
+                <p className="mt-1 text-sm text-ink-soft">
+                  Be the first to share the elite perks you received here — or claim the
+                  hotel to declare them officially.
+                </p>
+              </div>
+            ) : (
+              <ul>
+                {community.map((c) => {
+                  const meta = catMeta(c.category);
+                  return (
+                    <li
+                      key={c.category}
+                      className="flex items-start justify-between gap-6 border-b border-line py-5"
+                    >
+                      <div className="flex items-start gap-3.5">
+                        <span className="mt-0.5 text-xl leading-none" aria-hidden>
+                          {meta.icon}
+                        </span>
+                        <div>
+                          <p className="font-medium">{meta.label}</p>
+                          <p className="text-sm text-ink-soft">
+                            {c.reports} report{c.reports === 1 ? "" : "s"} ·{" "}
+                            {c.tiers.map(tierLabel).join(", ")}
+                          </p>
+                          {c.sample && (
+                            <p className="mt-1.5 max-w-prose text-sm italic text-ink-soft">
+                              &ldquo;{c.sample.slice(0, 140)}
+                              {c.sample.length > 140 ? "…" : ""}&rdquo;
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        {c.deliveryRate === null ? (
+                          <p className="text-sm text-ink-soft">—</p>
+                        ) : (
+                          <>
+                            <p className={`font-display text-xl font-semibold ${toneClass(c.deliveryRate)}`}>
+                              {Math.round(c.deliveryRate * 100)}%
+                            </p>
+                            <p className="text-xs text-ink-soft">received</p>
+                          </>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          {/* Claim CTA */}
+          <section className="mt-14 rounded-xl border border-line bg-accent-soft p-7">
+            <h3 className="font-display text-xl font-semibold text-accent">
+              Do you manage {hotel.name}?
+            </h3>
+            <p className="mt-2 max-w-prose text-sm leading-relaxed text-ink-soft">
+              Claim your property to declare the exact perks you offer each elite tier —
+              and show Marriott&rsquo;s most loyal travelers what makes your hotel worth
+              booking. It&rsquo;s free, and verified by email.
+            </p>
+            <Link
+              href="/for-hotels"
+              className="mt-5 inline-block rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper transition-colors hover:bg-accent"
+            >
+              Claim this hotel →
+            </Link>
+          </section>
+        </div>
+        <Footer />
+      </main>
     </>
   );
 }

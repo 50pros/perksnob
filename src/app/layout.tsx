@@ -1,32 +1,31 @@
 import type { Metadata } from "next";
-import { DM_Sans, Playfair_Display } from "next/font/google";
+import { Fraunces, Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 
-const dmSans = DM_Sans({
+const fraunces = Fraunces({
   subsets: ["latin"],
-  variable: "--font-dm-sans",
   display: "swap",
+  variable: "--font-fraunces",
 });
-
-const playfair = Playfair_Display({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-playfair",
   display: "swap",
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://perksnob.com"),
   title: {
-    default: "PerkSnob — Marriott Elite Benefits, Crowdsourced",
-    template: "%s | PerkSnob",
+    default: "PerkSnob — What Marriott elites actually get",
+    template: "%s · PerkSnob",
   },
   description:
-    "Real Marriott Bonvoy elite benefits reported by real guests. Crowdsourced perks for Titanium, Platinum, and Ambassador Elite at 300+ luxury properties.",
-  metadataBase: new URL("https://perksnob.com"),
+    "The authoritative, community-verified guide to Marriott Bonvoy elite benefits at every property — perks declared by hotels, confirmed by real guests.",
   openGraph: {
-    title: "PerkSnob — Marriott Elite Benefits, Crowdsourced",
+    title: "PerkSnob — What Marriott elites actually get",
     description:
-      "Real Marriott Bonvoy elite benefits reported by real guests. Crowdsourced perks for Titanium, Platinum, and Ambassador Elite at 300+ luxury properties.",
+      "Perks declared by hotels, confirmed by real guests. See the gap between what's promised and what's delivered.",
     url: "https://perksnob.com",
     siteName: "PerkSnob",
     images: [{ url: "/og-image.png", width: 1200, height: 630 }],
@@ -35,9 +34,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "PerkSnob — Marriott Elite Benefits, Crowdsourced",
-    description:
-      "Real Marriott Bonvoy elite benefits reported by real guests. Crowdsourced perks for Titanium, Platinum, and Ambassador Elite at 300+ luxury properties.",
+    title: "PerkSnob — What Marriott elites actually get",
+    description: "Perks declared by hotels, confirmed by real guests.",
     images: ["/og-image.png"],
   },
   icons: {
@@ -56,10 +54,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${dmSans.variable} ${playfair.variable}`}>
-      <body
-        className={`${dmSans.className} ${playfair.className} bg-slate-50 antialiased`}
-      >
+    <html lang="en" className={`${fraunces.variable} ${inter.variable}`}>
+      <body>
         {children}
 
         <Script
@@ -67,12 +63,7 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
         <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-06P5B7HMQ6');
-          `}
+          {`window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', 'G-06P5B7HMQ6');`}
         </Script>
       </body>
     </html>

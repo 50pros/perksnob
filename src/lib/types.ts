@@ -1,3 +1,4 @@
+/* Domain primitives -------------------------------------------------------- */
 export type EliteTier =
   | "ambassador"
   | "titanium"
@@ -39,6 +40,11 @@ export type Brand =
   | "Tribute Portfolio"
   | "Design Hotels";
 
+export type PerkSource = "hotel" | "community" | "admin";
+export type VerificationOutcome = "received" | "not_received" | "partial";
+export type ClaimStatus = "pending" | "verified" | "rejected" | "revoked";
+
+/* Tables ------------------------------------------------------------------- */
 export interface Hotel {
   id: string;
   name: string;
@@ -79,116 +85,65 @@ export interface PerkReport {
   last_edited_at: string | null;
 }
 
-export interface Comment {
+export interface HotelPerk {
   id: string;
   hotel_id: string;
-  user_id: string | null;
-  display_name: string;
-  elite_tier: EliteTier;
-  text: string;
-  created_at: string;
-}
-
-export interface Upvote {
-  id: string;
-  perk_report_id: string;
-  user_id: string;
-  created_at: string;
-}
-
-export interface PerkVote {
-  id?: string;
-  perk_id: string;
-  user_id: string;
-  vote: number;
-}
-
-export interface HotelRequest {
-  id: string;
-  user_id: string;
-  hotel_name: string;
-  brand: string | null;
-  city: string | null;
-  state: string | null;
-  country: string | null;
-  marriott_code: string | null;
-  marriott_url: string | null;
-  notes: string | null;
-  status: "pending" | "approved" | "rejected" | "duplicate";
-  reviewed_by: string | null;
-  reviewed_at: string | null;
-  hotel_id: string | null;
-  notification_sent_at: string | null;
-  notification_error: string | null;
-  created_at: string;
-}
-
-export interface UserProfile {
-  id: string;
-  display_name: string | null;
-  bio: string | null;
-  elite_tier: EliteTier | null;
-  elite_since: string | null;
-  reddit_username: string | null;
-}
-
-export interface LeaderboardRow {
-  user_id: string;
-  display_name: string;
-  elite_tier: EliteTier | null;
-  perk_count: number;
-  upvote_count: number;
-  comment_count: number;
-  total_score: number;
-  badge: string;
-}
-
-export interface AggregatedPerk {
-  hotel_id: string;
-  elite_tier: EliteTier;
+  elite_tier: EliteTier | "all";
   category: PerkCategory;
-  summary: string;
-  report_count: number;
-  upvote_count: number;
-  total_confirmations: number;
-  confidence: "high" | "medium" | "low";
-  last_reported: string;
+  offered: boolean;
+  details: Record<string, string | number | null>;
+  notes: string | null;
+  source: PerkSource;
+  declared_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface HotelRepresentative {
+export interface PerkVerification {
   id: string;
+  hotel_perk_id: string;
   user_id: string;
+  outcome: VerificationOutcome;
+  elite_tier: EliteTier | null;
+  stay_date: string | null;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface HotelClaim {
+  id: string;
   hotel_id: string;
-  verified: boolean;
+  user_id: string;
+  role: string;
+  status: ClaimStatus;
+  verification_method: "email_link" | "admin" | null;
   verified_at: string | null;
-  verification_method: "email_domain" | "admin_review" | null;
   created_at: string;
 }
 
-export interface AiSummary {
-  id: string;
-  hotel_id: string;
-  summary: {
-    text: string;
-    highlights: string[];
-    generated_model: string;
-  };
-  perk_count_at_generation: number;
-  generated_at: string;
+/* View models -------------------------------------------------------------- */
+export interface CommunityPerk {
+  category: PerkCategory;
+  reports: number;
+  tiers: EliteTier[];
+  received: number;
+  notReceived: number;
+  deliveryRate: number | null; // received / (received + notReceived)
+  sample: string | null;
 }
 
+/* Config shapes consumed by constants.ts ---------------------------------- */
 export interface TierDef {
   key: EliteTier;
   label: string;
   color: string;
 }
-
 export interface CategoryDef {
   key: PerkCategory;
   icon: string;
   label: string;
 }
-
 export interface CategoryFieldDef {
   key: string;
   label: string;
@@ -198,12 +153,3 @@ export interface CategoryFieldDef {
   placeholder?: string;
   showIf?: (details: Record<string, string | number | null>) => boolean;
 }
-
-export interface PerkFilter {
-  key: string;
-  label: string;
-  test: (perks: PerkReport[] | undefined) => boolean;
-}
-
-export type ConfidenceLevel = "high" | "medium" | "low";
-export type PerkOutcome = "received" | "not_received";
