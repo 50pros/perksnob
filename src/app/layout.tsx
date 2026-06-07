@@ -17,13 +17,13 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL("https://perksnob.com"),
   title: {
-    default: "PerkSnob — What Marriott elites actually get",
+    default: "PerkSnob — The Marriott Bonvoy elite benefits directory",
     template: "%s · PerkSnob",
   },
   description:
-    "The authoritative, community-verified guide to Marriott Bonvoy elite benefits at every property — perks declared by hotels, confirmed by real guests.",
+    "Discover, browse, and search the elite perks Marriott Bonvoy hotels actually provide — for Titanium, Platinum, and Ambassador Elite members. Declared by hotels, confirmed by real guests.",
   openGraph: {
-    title: "PerkSnob — What Marriott elites actually get",
+    title: "PerkSnob — The Marriott Bonvoy elite benefits directory",
     description:
       "Perks declared by hotels, confirmed by real guests. See the gap between what's promised and what's delivered.",
     url: "https://perksnob.com",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "PerkSnob — What Marriott elites actually get",
+    title: "PerkSnob — The Marriott Bonvoy elite benefits directory",
     description: "Perks declared by hotels, confirmed by real guests.",
     images: ["/og-image.png"],
   },
