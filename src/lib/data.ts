@@ -11,14 +11,16 @@ import type {
 /**
  * Cookie-less anon client for PUBLIC reads only. Using this (instead of the
  * cookie-bound server client) keeps public pages statically cacheable / ISR.
- * RLS still applies — anon can read hotels, perk_reports, hotel_perks, and
- * perk_verifications, all of which are world-readable.
+ * RLS still applies — anon can read hotels, perk_reports, hotel_perks,
+ * perk_verifications, and the public directory views.
  */
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   { auth: { persistSession: false } },
 );
+
+/* Hotel detail ------------------------------------------------------------- */
 
 export async function getHotelBySlug(slug: string): Promise<Hotel | null> {
   const { data } = await sb
@@ -113,4 +115,44 @@ export async function getHotelPageData(
     reportCount: reportsRes.data?.length ?? 0,
     isClaimed: (claimsRes.data?.length ?? 0) > 0,
   };
+}
+
+/* Directory / browse ------------------------------------------------------- */
+
+export interface DirectoryHotel {
+  slug: string;
+  name: string;
+  brand: string;
+  location: string;
+  region: string | null;
+  country: string | null;
+  report_count: number;
+}
+
+export async function getTopHotels(limit = 24): Promise<DirectoryHotel[]> {
+  const { data } = await sb
+    .from("hotel_directory")
+    .select("slug,name,brand,location,region,country,report_count")
+    .order("report_count", { ascending: false })
+    .order("name", { ascending: true })
+    .limit(limit);
+  return (data ?? []) as DirectoryHotel[];
+}
+
+export async function getBrandDirectory(): Promise<
+  { brand: string; hotel_count: number }[]
+> {
+  const { data } = await sb
+    .from("brand_directory")
+    .select("brand,hotel_count");
+  return (data ?? []) as { brand: string; hotel_count: number }[];
+}
+
+export async function getRegionDirectory(): Promise<
+  { region: string; hotel_count: number }[]
+> {
+  const { data } = await sb
+    .from("region_directory")
+    .select("region,hotel_count");
+  return (data ?? []) as { region: string; hotel_count: number }[];
 }
