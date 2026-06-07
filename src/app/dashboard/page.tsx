@@ -58,7 +58,10 @@ export default async function DashboardPage() {
     .eq("status", "verified");
 
   const hotels: DashHotel[] = (claims ?? [])
-    .map((c) => (c as { hotels: DashHotel | null }).hotels)
+    .map((c) => {
+      const h = (c as unknown as { hotels: DashHotel | DashHotel[] | null }).hotels;
+      return Array.isArray(h) ? (h[0] ?? null) : h;
+    })
     .filter((h): h is DashHotel => !!h);
 
   if (hotels.length === 0) {
