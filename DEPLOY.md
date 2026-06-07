@@ -1,4 +1,4 @@
-# ElitePerks — Deployment Guide
+# PerkSnob — Deployment Guide
 
 ## You have 3 steps to go live. No coding required.
 
@@ -6,7 +6,7 @@
 
 ## STEP 1: Set up the database (Supabase)
 
-1. Go to your Supabase dashboard → **eliteperks** project
+1. Go to your Supabase dashboard → **perksnob** project
 2. In the left sidebar, click **SQL Editor**
 3. Click **New Query**
 4. Open the file `supabase/schema.sql` from this project
@@ -99,7 +99,7 @@ If your project already exists and was created before March 1, 2026:
 1. Download and install **GitHub Desktop** from https://desktop.github.com
 2. Sign in with your GitHub account
 3. Click **File → Add Local Repository** or **Create New Repository**
-4. Name it `eliteperks`
+4. Name it `perksnob`
 5. Set the local path to wherever you saved this project folder
 6. Click **Create Repository**
 7. Click **Publish Repository** (make it public or private, your choice)
@@ -107,11 +107,11 @@ If your project already exists and was created before March 1, 2026:
 ### Or if you prefer the command line:
 
 ```bash
-cd eliteperks
+cd perksnob
 git init
 git add .
 git commit -m "Initial commit"
-git remote add origin https://github.com/YOUR_USERNAME/eliteperks.git
+git remote add origin https://github.com/YOUR_USERNAME/perksnob.git
 git push -u origin main
 ```
 
@@ -127,10 +127,10 @@ This regenerates `public/sitemap.xml` from all approved hotels in Supabase and r
 
 1. Go to https://vercel.com/dashboard
 2. Click **Add New → Project**
-3. Click **Import** next to your `eliteperks` GitHub repo
+3. Click **Import** next to your `perksnob` GitHub repo
 4. Vercel will auto-detect it's a Vite project — leave defaults
 5. Click **Deploy**
-6. Wait ~60 seconds — you'll get a live URL like `eliteperks.vercel.app`
+6. Wait ~60 seconds — you'll get a live URL like `perksnob.vercel.app`
 
 ### That's it — your site is live! 🎉
 
@@ -157,4 +157,4 @@ Supabase → **Settings** → **API Keys**.
 2. In Vercel → your project → Settings → Domains → Add your domain
 3. Update DNS records as Vercel instructs
 
-Ideas: `eliteperks.co`, `marriottperks.info`, `hotelperks.app`
+Ideas: `perksnob.co`, `marriottperks.info`, `hotelperks.app`

@@ -1,4 +1,4 @@
--- ElitePerks Database Schema
+-- PerkSnob Database Schema
 -- Paste this entire file into Supabase SQL Editor (left sidebar → SQL Editor → New Query → paste → Run)
 
 -- 1. HOTELS TABLE
