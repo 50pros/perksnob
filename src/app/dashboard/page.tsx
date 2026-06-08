@@ -42,10 +42,10 @@ export default async function DashboardPage() {
           You need to be signed in to see your claimed properties.
         </p>
         <Link
-          href="/for-hotels"
+          href="/signin"
           className="mt-5 inline-block rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper hover:bg-accent"
         >
-          Go to claim flow →
+          Sign in →
         </Link>
       </div>,
     );
@@ -69,14 +69,14 @@ export default async function DashboardPage() {
       <div className="rounded-xl border border-dashed border-line p-12 text-center">
         <p className="font-display text-2xl font-semibold">No verified properties yet</p>
         <p className="mt-2 text-ink-soft">
-          Once you verify a claim from the hotel&rsquo;s on-file email, it&rsquo;ll appear
-          here.
+          Properties are claimed by invitation. If you received an invitation email for your
+          hotel, use the private link inside it to claim your profile.
         </p>
         <Link
-          href="/for-hotels"
+          href="/contact"
           className="mt-5 inline-block rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper hover:bg-accent"
         >
-          Claim a property →
+          Contact us →
         </Link>
       </div>,
     );

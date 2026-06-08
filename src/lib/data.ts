@@ -244,6 +244,24 @@ export async function getHomeStats(): Promise<{ hotels: number; reports: number 
   return { hotels: h.count ?? 0, reports: r.count ?? 0 };
 }
 
+/* Leaderboard / Hiscores --------------------------------------------------- */
+
+export interface LeaderboardEntry {
+  display_name: string;
+  total_reports: number;
+  hotels_covered: number;
+  badge: string | null;
+}
+
+export async function getLeaderboard(limit = 10): Promise<LeaderboardEntry[]> {
+  const { data } = await sb
+    .from("leaderboard")
+    .select("display_name,total_reports,hotels_covered,badge")
+    .order("total_reports", { ascending: false })
+    .limit(limit);
+  return (data ?? []) as LeaderboardEntry[];
+}
+
 export function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }

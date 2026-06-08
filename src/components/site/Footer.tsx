@@ -25,7 +25,7 @@ export default function Footer() {
               <li><Link href="/" className="transition-colors hover:text-paper">Home</Link></li>
               <li><Link href="/hotels" className="transition-colors hover:text-paper">Hotels</Link></li>
               <li><Link href="/brands" className="transition-colors hover:text-paper">Brands</Link></li>
-              <li><Link href="/how-it-works" className="transition-colors hover:text-paper">How it works</Link></li>
+              <li><Link href="/hiscores" className="transition-colors hover:text-paper">Hiscores</Link></li>
             </ul>
           </div>
 
@@ -39,12 +39,7 @@ export default function Footer() {
                   r/marriott
                 </a>
               </li>
-              <li>
-                <a href="https://www.reddit.com/r/marriott/" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-paper">
-                  Contact (Reddit)
-                </a>
-              </li>
-              <li><Link href="/for-hotels" className="transition-colors hover:text-paper">For hotels</Link></li>
+              <li><Link href="/contact" className="transition-colors hover:text-paper">Contact</Link></li>
             </ul>
           </div>
         </div>

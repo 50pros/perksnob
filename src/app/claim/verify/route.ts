@@ -9,13 +9,13 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 export async function GET(req: NextRequest) {
   const base = req.nextUrl.origin;
   const token = req.nextUrl.searchParams.get("token");
-  if (!token) return NextResponse.redirect(`${base}/for-hotels?claim=invalid`);
+  if (!token) return NextResponse.redirect(`${base}/`);
 
   let svc;
   try {
     svc = await createServiceRoleClient();
   } catch {
-    return NextResponse.redirect(`${base}/for-hotels?claim=error`);
+    return NextResponse.redirect(`${base}/`);
   }
 
   const { data: tok } = await svc
@@ -24,10 +24,10 @@ export async function GET(req: NextRequest) {
     .eq("token", token)
     .maybeSingle();
 
-  if (!tok) return NextResponse.redirect(`${base}/for-hotels?claim=invalid`);
+  if (!tok) return NextResponse.redirect(`${base}/`);
   if (tok.used_at) return NextResponse.redirect(`${base}/dashboard?claim=already`);
   if (new Date(tok.expires_at).getTime() < Date.now()) {
-    return NextResponse.redirect(`${base}/for-hotels?claim=expired`);
+    return NextResponse.redirect(`${base}/`);
   }
 
   await svc

@@ -64,7 +64,7 @@ export default function ClaimUnlocks({
       {showCta && (
         <div className="mt-9 flex flex-wrap items-center gap-x-5 gap-y-3">
           <Link
-            href="/for-hotels"
+            href="/"
             className="rounded-full bg-paper px-6 py-3 text-sm font-medium text-ink transition-colors hover:bg-accent hover:text-paper"
           >
             Claim this hotel →
