@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
 import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
+import { Gift } from "lucide-react";
 import { getLeaderboard } from "@/lib/data";
 
 export const revalidate = 3600;
+
+const PRIZES = [
+  "Wins a 2-night stay at any Ritz Carlton (max $1,000)",
+  "Wins a 2-night stay at any Westin (max $750)",
+  "Wins a 2-night stay at any Courtyard (max $250)",
+];
 
 export const metadata: Metadata = {
   title: "Hiscores — top PerkSnob contributors",
@@ -13,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 export default async function HiscoresPage() {
-  const rows = await getLeaderboard(10);
+  const rows = await getLeaderboard(3);
 
   return (
     <main className="min-h-screen bg-paper text-ink">
@@ -48,6 +55,12 @@ export default async function HiscoresPage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{r.display_name}</p>
                     {r.badge && <p className="text-xs text-ink-soft">{r.badge}</p>}
+                    {PRIZES[i] && (
+                      <p className="mt-1.5 flex items-center gap-1.5 text-sm font-medium text-accent">
+                        <Gift className="h-4 w-4 shrink-0" aria-hidden />
+                        {PRIZES[i]}
+                      </p>
+                    )}
                   </div>
                   <div className="hidden w-20 shrink-0 text-right sm:block">
                     <p className="font-medium">{r.hotels_covered}</p>
