@@ -44,12 +44,17 @@ default run is a dry run that prints what it *would* do and writes nothing.
 ## What's built
 - **`scripts/campaign.mjs`** — the sender. Dry-run by default; `--send` actually mails via
   Resend. Pulls the full 8,412 addressable hotels (paginated), personalizes each email with
-  the property name + its current guest-report count, links to that hotel's PerkSnob page,
-  rate-limits (~2.5/sec), and logs every send.
+  the property name + its current guest-report count, links to a PRIVATE pre-filled
+  invitation page (`/claim/<token>` — not the public profile), mints a stable per-hotel
+  invite token on `--send`, skips already-accepted hotels, rate-limits (~2.5/sec), logs every send.
 - **`campaign_sends` table** — one row per (campaign, hotel). The sender skips anyone already
   logged, so it's **resumable and never double-sends**. Service-role only (not public).
-- **Email** — subject `What elite guests say about {Hotel} on PerkSnob`; body = free/
-  community framing → claim CTA → CAN-SPAM footer (not-affiliated + address + unsubscribe).
+- **Email** — a private invitation: subject `Claim your free PerkSnob profile for {Hotel}`;
+  body = free/community framing → "Accept your invitation" CTA (tokenized `/claim/<token>`)
+  → CAN-SPAM footer (not-affiliated + address + unsubscribe).
+- **Invitation flow** — clicking the link opens `/claim/<token>` (pre-filled hotel card +
+  "why claim" panel), they create an account / sign in, and accept → a VERIFIED claim is
+  created and they land in the dashboard. Public profiles show NO claim CTA — it's invite-only.
 
 ## Before the first real send (the checklist)
 1. **Verify a sending domain in Resend** — use a subdomain like `mail.perksnob.com`, add the
