@@ -9,6 +9,7 @@ import { CATS } from "@/lib/constants";
 interface DPerk {
   id: string;
   category: string;
+  elite_tier: string;
   notes: string | null;
   received: number;
   notReceived: number;
@@ -23,6 +24,16 @@ function tone(r: number | null): string {
   if (r >= 0.4) return "text-partial";
   return "text-disputed";
 }
+
+const TIER_ORDER = ["all", "ambassador", "titanium", "platinum", "gold", "silver"];
+const TIER_LABEL: Record<string, string> = {
+  all: "All elite members",
+  ambassador: "Ambassador Elite",
+  titanium: "Titanium Elite",
+  platinum: "Platinum Elite",
+  gold: "Gold Elite",
+  silver: "Silver Elite",
+};
 
 export default function DeclaredPerks({
   perks,
@@ -87,6 +98,77 @@ export default function DeclaredPerks({
     setBusy(null);
   }
 
+  function renderPerk(p: DPerk) {
+    const meta = catMeta(p.category);
+    const st = stats[p.id] ?? { r: 0, n: 0 };
+    const denom = st.r + st.n;
+    const rate = denom > 0 ? st.r / denom : null;
+    const my = mine[p.id];
+    return (
+      <li
+        key={p.id}
+        className="flex flex-wrap items-start justify-between gap-4 border-b border-line py-4"
+      >
+        <div className="flex items-start gap-3.5">
+          <span className="mt-0.5 text-xl leading-none" aria-hidden>
+            {meta.icon}
+          </span>
+          <div>
+            <p className="font-medium">{meta.label}</p>
+            {p.notes && <p className="text-sm text-ink-soft">{p.notes}</p>}
+            <div className="mt-2 flex items-center gap-2 text-xs">
+              {user ? (
+                <>
+                  <button
+                    onClick={() => vote(p.id, "received")}
+                    disabled={busy === p.id}
+                    className={`rounded-full border px-3 py-1 transition-colors ${my === "received" ? "border-delivered bg-delivered/10 text-delivered" : "border-line text-ink-soft hover:border-ink"}`}
+                  >
+                    Got it
+                  </button>
+                  <button
+                    onClick={() => vote(p.id, "not_received")}
+                    disabled={busy === p.id}
+                    className={`rounded-full border px-3 py-1 transition-colors ${my === "not_received" ? "border-disputed bg-disputed/10 text-disputed" : "border-line text-ink-soft hover:border-ink"}`}
+                  >
+                    Didn&rsquo;t get it
+                  </button>
+                </>
+              ) : (
+                <Link
+                  href={`/signin?next=/hotel/${slug}`}
+                  className="text-accent underline underline-offset-2"
+                >
+                  Stayed here? Confirm or dispute →
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          {rate === null ? (
+            <p className="text-xs text-ink-soft">Awaiting guests</p>
+          ) : (
+            <>
+              <p className={`font-display text-xl font-semibold ${tone(rate)}`}>
+                {Math.round(rate * 100)}%
+              </p>
+              <p className="text-xs text-ink-soft">
+                {denom} confirm{denom === 1 ? "s" : ""}
+              </p>
+            </>
+          )}
+        </div>
+      </li>
+    );
+  }
+
+  const groups = TIER_ORDER.map((t) => ({
+    tier: t,
+    items: perks.filter((p) => (p.elite_tier || "all") === t),
+  })).filter((g) => g.items.length > 0);
+  const showHeaders = groups.length > 1;
+
   return (
     <section className="mt-12">
       <div className="flex items-baseline justify-between border-b border-line pb-3">
@@ -97,72 +179,16 @@ export default function DeclaredPerks({
           Declared by the hotel
         </span>
       </div>
-      <ul>
-        {perks.map((p) => {
-          const meta = catMeta(p.category);
-          const st = stats[p.id] ?? { r: 0, n: 0 };
-          const denom = st.r + st.n;
-          const rate = denom > 0 ? st.r / denom : null;
-          const my = mine[p.id];
-          return (
-            <li
-              key={p.id}
-              className="flex flex-wrap items-start justify-between gap-4 border-b border-line py-4"
-            >
-              <div className="flex items-start gap-3.5">
-                <span className="mt-0.5 text-xl leading-none" aria-hidden>
-                  {meta.icon}
-                </span>
-                <div>
-                  <p className="font-medium">{meta.label}</p>
-                  {p.notes && <p className="text-sm text-ink-soft">{p.notes}</p>}
-                  <div className="mt-2 flex items-center gap-2 text-xs">
-                    {user ? (
-                      <>
-                        <button
-                          onClick={() => vote(p.id, "received")}
-                          disabled={busy === p.id}
-                          className={`rounded-full border px-3 py-1 transition-colors ${my === "received" ? "border-delivered bg-delivered/10 text-delivered" : "border-line text-ink-soft hover:border-ink"}`}
-                        >
-                          Got it
-                        </button>
-                        <button
-                          onClick={() => vote(p.id, "not_received")}
-                          disabled={busy === p.id}
-                          className={`rounded-full border px-3 py-1 transition-colors ${my === "not_received" ? "border-disputed bg-disputed/10 text-disputed" : "border-line text-ink-soft hover:border-ink"}`}
-                        >
-                          Didn&rsquo;t get it
-                        </button>
-                      </>
-                    ) : (
-                      <Link
-                        href={`/signin?next=/hotel/${slug}`}
-                        className="text-accent underline underline-offset-2"
-                      >
-                        Stayed here? Confirm or dispute →
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="shrink-0 text-right">
-                {rate === null ? (
-                  <p className="text-xs text-ink-soft">Awaiting guests</p>
-                ) : (
-                  <>
-                    <p className={`font-display text-xl font-semibold ${tone(rate)}`}>
-                      {Math.round(rate * 100)}%
-                    </p>
-                    <p className="text-xs text-ink-soft">
-                      {denom} confirm{denom === 1 ? "s" : ""}
-                    </p>
-                  </>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      {groups.map((g) => (
+        <div key={g.tier} className={showHeaders ? "mt-6" : "mt-1"}>
+          {showHeaders && (
+            <h3 className="text-[13px] font-medium uppercase tracking-eyebrow text-accent">
+              {TIER_LABEL[g.tier] ?? g.tier}
+            </h3>
+          )}
+          <ul className={showHeaders ? "mt-1" : ""}>{g.items.map(renderPerk)}</ul>
+        </div>
+      ))}
     </section>
   );
 }

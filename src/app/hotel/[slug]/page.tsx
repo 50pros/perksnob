@@ -5,6 +5,9 @@ import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
 import DeclaredPerks from "@/components/perk/DeclaredPerks";
 import HotelInfoBar from "@/components/hotel/HotelInfoBar";
+import AtAGlance from "@/components/hotel/AtAGlance";
+import ClaimBanner from "@/components/hotel/ClaimBanner";
+import ClaimUnlocks from "@/components/hotel/ClaimUnlocks";
 import { getHotelBySlug, getHotelPageData } from "@/lib/data";
 import { CATS } from "@/lib/constants";
 import type { EliteTier, PerkCategory } from "@/lib/types";
@@ -61,6 +64,8 @@ export default async function HotelPage({
   const { hotel, community, reportCount, isClaimed, declared, deliveryScore } = data;
   const declaredOffered = declared.filter((d) => d.offered);
   const brandSlug = slugify(hotel.brand);
+  const countrySuffix =
+    hotel.country && !hotel.location.includes(hotel.country) ? ` · ${hotel.country}` : "";
 
   const jsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -106,7 +111,7 @@ export default async function HotelPage({
             <span className="text-ink">{hotel.name}</span>
           </nav>
 
-          {/* Header row */}
+          {/* Hero */}
           <div className="mt-6 flex flex-wrap items-start justify-between gap-5">
             <div>
               <p className="text-[13px] font-medium uppercase tracking-eyebrow text-accent">
@@ -117,9 +122,7 @@ export default async function HotelPage({
               </h1>
               <p className="mt-3 text-ink-soft">
                 {hotel.location}
-                {hotel.country && !hotel.location.includes(hotel.country)
-                  ? ` · ${hotel.country}`
-                  : ""}
+                {countrySuffix}
               </p>
             </div>
             {isClaimed ? (
@@ -136,132 +139,104 @@ export default async function HotelPage({
             )}
           </div>
 
-          {/* Property facts: address, rooms, phone, book link */}
           <HotelInfoBar hotel={hotel} />
 
-          {/* Unclaimed notice */}
-          {!isClaimed && (
-            <div className="mt-7 rounded-xl border border-line bg-paper-raised p-5">
-              <p className="text-sm leading-relaxed text-ink-soft">
-                This profile hasn&rsquo;t been claimed by the hotel yet. The perks below
-                are <span className="font-medium text-ink">reported by guests</span>, not
-                confirmed by the property. If you manage {hotel.name},{" "}
-                <Link href="/for-hotels" className="font-medium text-accent underline underline-offset-2">
-                  claim it
-                </Link>{" "}
-                to publish your official elite benefits.
-              </p>
+          {/* Body: content + sticky sidebar */}
+          <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="min-w-0">
+              {!isClaimed && (
+                <ClaimBanner hotelName={hotel.name} reportCount={reportCount} />
+              )}
+
+              {/* Declared by the hotel (grouped by tier) */}
+              {declaredOffered.length > 0 && (
+                <DeclaredPerks perks={declaredOffered} slug={hotel.slug} />
+              )}
+
+              {/* Community reports */}
+              <section
+                className={declaredOffered.length > 0 || !isClaimed ? "mt-12" : ""}
+              >
+                <div className="flex items-baseline justify-between border-b border-line pb-3">
+                  <h2 className="font-display text-2xl font-semibold tracking-tight">
+                    What guests report
+                  </h2>
+                  <p className="text-sm text-ink-soft">
+                    {reportCount} report{reportCount === 1 ? "" : "s"}
+                  </p>
+                </div>
+
+                {community.length === 0 ? (
+                  <div className="mt-8 rounded-xl border border-dashed border-line p-12 text-center">
+                    <p className="font-medium">No guest reports yet.</p>
+                    <p className="mt-1 text-sm text-ink-soft">
+                      Be the first to share the elite perks you received here — or claim the
+                      hotel to declare them officially.
+                    </p>
+                  </div>
+                ) : (
+                  <ul>
+                    {community.map((c) => {
+                      const meta = catMeta(c.category);
+                      return (
+                        <li
+                          key={c.category}
+                          className="flex items-start justify-between gap-6 border-b border-line py-5"
+                        >
+                          <div className="flex items-start gap-3.5">
+                            <span className="mt-0.5 text-xl leading-none" aria-hidden>
+                              {meta.icon}
+                            </span>
+                            <div>
+                              <p className="font-medium">{meta.label}</p>
+                              <p className="text-sm text-ink-soft">
+                                {c.reports} report{c.reports === 1 ? "" : "s"} ·{" "}
+                                {c.tiers.map(tierLabel).join(", ")}
+                              </p>
+                              {c.sample && (
+                                <p className="mt-1.5 max-w-prose text-sm italic text-ink-soft">
+                                  &ldquo;{c.sample.slice(0, 140)}
+                                  {c.sample.length > 140 ? "…" : ""}&rdquo;
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            {c.deliveryRate === null ? (
+                              <p className="text-sm text-ink-soft">—</p>
+                            ) : (
+                              <>
+                                <p
+                                  className={`font-display text-xl font-semibold ${toneClass(c.deliveryRate)}`}
+                                >
+                                  {Math.round(c.deliveryRate * 100)}%
+                                </p>
+                                <p className="text-xs text-ink-soft">received</p>
+                              </>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </section>
+
+              {/* Conversion closer (unclaimed only) */}
+              {!isClaimed && <ClaimUnlocks hotelName={hotel.name} />}
             </div>
-          )}
 
-          {/* Delivery score */}
-          {deliveryScore && (
-            <div className="mt-7 flex items-center gap-5 rounded-xl border border-line bg-paper-raised p-6">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-accent-soft">
-                <span className="font-display text-3xl font-semibold text-accent">
-                  {deliveryScore.grade}
-                </span>
-              </div>
-              <div>
-                <p className="font-display text-lg font-semibold">Delivery score</p>
-                <p className="mt-0.5 text-sm text-ink-soft">
-                  Declares {deliveryScore.declaredCount} perk
-                  {deliveryScore.declaredCount === 1 ? "" : "s"} ·{" "}
-                  {Math.round(deliveryScore.avgDelivery * 100)}% average delivery ·{" "}
-                  {deliveryScore.confirmations} guest confirmation
-                  {deliveryScore.confirmations === 1 ? "" : "s"}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Declared by the hotel */}
-          {declaredOffered.length > 0 && (
-            <DeclaredPerks perks={declaredOffered} slug={hotel.slug} />
-          )}
-
-          {/* Community perks */}
-          <section className="mt-12">
-            <div className="flex items-baseline justify-between border-b border-line pb-3">
-              <h2 className="font-display text-2xl font-semibold tracking-tight">
-                What guests report
-              </h2>
-              <p className="text-sm text-ink-soft">
-                {reportCount} report{reportCount === 1 ? "" : "s"}
-              </p>
-            </div>
-
-            {community.length === 0 ? (
-              <div className="mt-8 rounded-xl border border-dashed border-line p-12 text-center">
-                <p className="font-medium">No guest reports yet.</p>
-                <p className="mt-1 text-sm text-ink-soft">
-                  Be the first to share the elite perks you received here — or claim the
-                  hotel to declare them officially.
-                </p>
-              </div>
-            ) : (
-              <ul>
-                {community.map((c) => {
-                  const meta = catMeta(c.category);
-                  return (
-                    <li
-                      key={c.category}
-                      className="flex items-start justify-between gap-6 border-b border-line py-5"
-                    >
-                      <div className="flex items-start gap-3.5">
-                        <span className="mt-0.5 text-xl leading-none" aria-hidden>
-                          {meta.icon}
-                        </span>
-                        <div>
-                          <p className="font-medium">{meta.label}</p>
-                          <p className="text-sm text-ink-soft">
-                            {c.reports} report{c.reports === 1 ? "" : "s"} ·{" "}
-                            {c.tiers.map(tierLabel).join(", ")}
-                          </p>
-                          {c.sample && (
-                            <p className="mt-1.5 max-w-prose text-sm italic text-ink-soft">
-                              &ldquo;{c.sample.slice(0, 140)}
-                              {c.sample.length > 140 ? "…" : ""}&rdquo;
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        {c.deliveryRate === null ? (
-                          <p className="text-sm text-ink-soft">—</p>
-                        ) : (
-                          <>
-                            <p className={`font-display text-xl font-semibold ${toneClass(c.deliveryRate)}`}>
-                              {Math.round(c.deliveryRate * 100)}%
-                            </p>
-                            <p className="text-xs text-ink-soft">received</p>
-                          </>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
-
-          {/* Claim CTA */}
-          <section className="mt-14 rounded-xl border border-line bg-accent-soft p-7">
-            <h3 className="font-display text-xl font-semibold text-accent">
-              Do you manage {hotel.name}?
-            </h3>
-            <p className="mt-2 max-w-prose text-sm leading-relaxed text-ink-soft">
-              Claim your property to declare the exact perks you offer each elite tier —
-              and show Marriott&rsquo;s most loyal travelers what makes your hotel worth
-              booking. It&rsquo;s free, and verified by email.
-            </p>
-            <Link
-              href="/for-hotels"
-              className="mt-5 inline-block rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-paper transition-colors hover:bg-accent"
-            >
-              Claim this hotel →
-            </Link>
-          </section>
+            {/* Sticky sidebar */}
+            <aside className="space-y-5 lg:sticky lg:top-6 lg:self-start">
+              <AtAGlance
+                hotel={hotel}
+                reportCount={reportCount}
+                categoryCount={community.length}
+                isClaimed={isClaimed}
+                deliveryScore={deliveryScore}
+              />
+            </aside>
+          </div>
         </div>
         <Footer />
       </main>
