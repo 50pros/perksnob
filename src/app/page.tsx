@@ -33,7 +33,7 @@ export default async function HomePage() {
       {/* Hero --------------------------------------------------------------- */}
       <section className="mx-auto max-w-content px-6 pb-10 pt-20">
         <p className="text-[13px] font-medium uppercase tracking-eyebrow text-accent">
-          The Marriott Bonvoy elite benefits directory
+          Marriott Bonvoy elite benefits directory
         </p>
         <h1 className="mt-5 max-w-[20ch] font-display text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
           Discover hotels, for the <span className="italic">elite perks</span>
@@ -58,8 +58,8 @@ export default async function HomePage() {
         <dl className="mt-12 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-4">
           {[
             [fmt(stats.hotels), "Properties"],
-            [String(CATS.length), "Perk categories"],
             [fmt(stats.reports), "Guest reports"],
+            [String(CATS.length), "Perk categories"],
             ["Free", "Community-led"],
           ].map(([n, l]) => (
             <div key={l} className="bg-paper px-5 py-6">
