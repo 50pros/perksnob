@@ -10,9 +10,10 @@ export default function Footer() {
               <span className="text-paper">Perk</span>
               <span className="text-paper/45">Snob</span>
             </span>
-            <p className="mt-3 max-w-xs text-sm leading-relaxed text-paper/55">
-              Real Marriott Bonvoy elite benefits — declared by hotels, verified by real
-              guests. Powered by the community.
+            <p className="mt-3 max-w-sm text-sm leading-relaxed text-paper/55">
+              PerkSnob is a directory platform for Marriott Bonvoy Elite guests to discover,
+              browse, search, and find what perks &amp; benefits hotel properties provide.
+              Powered by the community.
             </p>
           </div>
 
@@ -49,9 +50,11 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 border-t border-paper/10 pt-6 text-xs text-paper/40">
-          PerkSnob is a free, volunteer-led project from the Marriott Bonvoy community.
-          Not affiliated with or endorsed by Marriott International. All trademarks belong
-          to their respective owners.
+          <p>PerkSnob is a free, volunteer-led project from the Marriott Bonvoy community.</p>
+          <p className="mt-1">
+            Not affiliated with or endorsed by Marriott International. All trademarks belong
+            to their respective owners.
+          </p>
         </div>
       </div>
     </footer>

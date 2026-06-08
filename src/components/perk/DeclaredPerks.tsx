@@ -26,6 +26,13 @@ function tone(r: number | null): string {
   return "text-disputed";
 }
 
+// Qualitative phrasing instead of a precise % (sample sizes are small).
+function deliveryLabel(r: number): string {
+  if (r >= 0.7) return "Usually received";
+  if (r >= 0.4) return "Sometimes received";
+  return "Rarely received";
+}
+
 const TIER_ORDER = ["all", "ambassador", "titanium", "platinum", "gold", "silver"];
 const TIER_LABEL: Record<string, string> = {
   all: "All elite members",
@@ -147,13 +154,13 @@ export default function DeclaredPerks({
             </div>
           </div>
         </div>
-        <div className="shrink-0 text-right">
+        <div className="w-32 shrink-0 text-right">
           {rate === null ? (
             <p className="text-xs text-ink-soft">Awaiting guests</p>
           ) : (
             <>
-              <p className={`font-display text-xl font-semibold ${tone(rate)}`}>
-                {Math.round(rate * 100)}%
+              <p className={`text-sm font-semibold ${tone(rate)}`}>
+                {deliveryLabel(rate)}
               </p>
               <p className="text-xs text-ink-soft">
                 {denom} confirm{denom === 1 ? "s" : ""}

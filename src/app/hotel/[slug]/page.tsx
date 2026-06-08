@@ -33,6 +33,13 @@ function toneClass(rate: number | null): string {
   return "text-disputed";
 }
 
+// Qualitative phrasing instead of a precise % (sample sizes are small).
+function deliveryLabel(rate: number): string {
+  if (rate >= 0.7) return "Usually received";
+  if (rate >= 0.4) return "Sometimes received";
+  return "Rarely received";
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -188,18 +195,15 @@ export default async function HotelPage({
                               )}
                             </div>
                           </div>
-                          <div className="shrink-0 text-right">
+                          <div className="w-32 shrink-0 text-right">
                             {c.deliveryRate === null ? (
                               <p className="text-sm text-ink-soft">—</p>
                             ) : (
-                              <>
-                                <p
-                                  className={`font-display text-xl font-semibold ${toneClass(c.deliveryRate)}`}
-                                >
-                                  {Math.round(c.deliveryRate * 100)}%
-                                </p>
-                                <p className="text-xs text-ink-soft">received</p>
-                              </>
+                              <p
+                                className={`text-sm font-semibold ${toneClass(c.deliveryRate)}`}
+                              >
+                                {deliveryLabel(c.deliveryRate)}
+                              </p>
                             )}
                           </div>
                         </li>
