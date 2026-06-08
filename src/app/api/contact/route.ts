@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 
-const CONTACT_TO = "hello@perksnob.com";
+const CONTACT_TO = "hello@50pros.com"; // internal — never shown to the submitter
 
 /**
  * Public contact form. Always stores the message (service role); also sends a
- * best-effort email notification to hello@perksnob.com when Resend is configured.
+ * best-effort email notification to the internal inbox via Brevo's
+ * transactional API when BREVO_API_KEY is configured. The submitter never sees
+ * the destination address.
  */
 export async function POST(req: NextRequest) {
   let body: {
@@ -48,21 +50,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "store_failed" }, { status: 500 });
   }
 
-  // Best-effort email (activates once RESEND_API_KEY + a verified domain exist).
-  if (process.env.RESEND_API_KEY) {
+  // Best-effort email notification via Brevo transactional API (set BREVO_API_KEY
+  // to your Brevo account key). Sends from the authenticated perksnob.com domain;
+  // reply-to is the submitter so you can answer them directly from your inbox.
+  if (process.env.BREVO_API_KEY) {
     try {
-      await fetch("https://api.resend.com/emails", {
+      await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-          "Content-Type": "application/json",
+          "api-key": process.env.BREVO_API_KEY,
+          "content-type": "application/json",
+          accept: "application/json",
         },
         body: JSON.stringify({
-          from: process.env.CONTACT_FROM_EMAIL || "PerkSnob <contact@perksnob.com>",
-          to: CONTACT_TO,
-          reply_to: email || undefined,
+          sender: {
+            email: process.env.CONTACT_FROM_EMAIL || "noreply@perksnob.com",
+            name: "PerkSnob Contact",
+          },
+          to: [{ email: CONTACT_TO }],
+          ...(email ? { replyTo: { email, name: name || email } } : {}),
           subject: `New PerkSnob contact${name ? ` from ${name}` : ""}`,
-          text: `Name: ${name || "—"}\nEmail: ${email || "—"}\n\n${message}`,
+          textContent: `Name: ${name || "—"}\nEmail: ${email || "—"}\n\n${message}`,
         }),
       });
     } catch {
