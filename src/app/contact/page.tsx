@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
+import ContactForm from "@/components/site/ContactForm";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -21,32 +22,37 @@ export default function ContactPage() {
           Get in touch
         </h1>
         <p className="mt-4 max-w-prose text-lg leading-relaxed text-ink-soft">
-          PerkSnob is a free, volunteer-led project from the r/marriott community. The best
-          way to reach us is on Reddit — post in the community or send a message, and we will
-          reply there.
+          PerkSnob is a free, volunteer-led project from the r/marriott community. Send us a
+          note below — or reach us on Reddit. We read everything.
         </p>
 
-        <div className="mt-8 grid max-w-xl gap-4">
-          <a
-            href="https://www.reddit.com/r/marriott/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-xl border border-line bg-paper-raised p-6 transition-colors hover:border-accent"
-          >
-            <p className="font-display text-lg font-semibold">r/marriott on Reddit</p>
-            <p className="mt-1 text-sm text-ink-soft">
-              Reach the community of 140,000+ Marriott Bonvoy members. →
-            </p>
-          </a>
-        </div>
+        <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]">
+          <div className="max-w-xl">
+            <ContactForm />
+          </div>
 
-        <div className="mt-10 max-w-prose rounded-xl border border-line bg-paper-raised p-6">
-          <p className="font-medium">Are you a hotel?</p>
-          <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
-            Listings are added by the community and claimed by invitation only. If you
-            received an invitation email for your property, use the private link inside it to
-            claim and complete your profile.
-          </p>
+          <aside className="space-y-5">
+            <a
+              href="https://www.reddit.com/r/marriott/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block rounded-xl border border-line bg-paper-raised p-6 transition-colors hover:border-accent"
+            >
+              <p className="font-display text-lg font-semibold">r/marriott on Reddit</p>
+              <p className="mt-1 text-sm text-ink-soft">
+                Reach the community of 140,000+ Marriott Bonvoy members. →
+              </p>
+            </a>
+
+            <div className="rounded-xl border border-line bg-paper-raised p-6">
+              <p className="font-medium">Are you a hotel?</p>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+                Listings are added by the community and claimed by invitation only. If you
+                received an invitation email for your property, use the private link inside it
+                to claim your profile.
+              </p>
+            </div>
+          </aside>
         </div>
       </div>
       <Footer />

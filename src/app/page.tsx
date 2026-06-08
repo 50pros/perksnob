@@ -36,7 +36,8 @@ export default async function HomePage() {
           Marriott Bonvoy elite benefits directory
         </p>
         <h1 className="mt-5 max-w-[20ch] font-display text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
-          Discover hotels, for the <span className="italic">elite perks</span>
+          Discover hotels,<br className="hidden lg:block" /> for the{" "}
+          <span className="italic">elite perks</span>
         </h1>
         <p className="mt-6 max-w-prose text-lg leading-relaxed text-ink-soft">
           A platform for Titanium, Platinum, and Ambassador Elite members to discover,
