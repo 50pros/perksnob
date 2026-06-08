@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { BadgeCheck } from "lucide-react";
 import type { Hotel } from "@/lib/types";
 import type { DeliveryScore } from "@/lib/data";
@@ -35,18 +34,14 @@ export default function AtAGlance({
     <div className="rounded-xl border border-line bg-paper-raised p-6">
       <p className="font-display text-lg font-semibold">At a glance</p>
 
-      <div className="mt-4">
-        {isClaimed ? (
+      {isClaimed && (
+        <div className="mt-4">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-delivered/40 bg-delivered/10 px-3 py-1 text-xs font-medium text-delivered">
             <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
             Verified by the hotel
           </span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1 text-xs font-medium text-ink-soft">
-            Unclaimed listing
-          </span>
-        )}
-      </div>
+        </div>
+      )}
 
       {deliveryScore && (
         <div className="mt-4 flex items-center gap-3 rounded-lg bg-accent-soft p-3">
@@ -74,15 +69,6 @@ export default function AtAGlance({
           </div>
         ))}
       </dl>
-
-      {!isClaimed && (
-        <Link
-          href="/for-hotels"
-          className="mt-4 block border-t border-line pt-4 text-sm font-medium text-accent underline-offset-2 hover:underline"
-        >
-          Is this your hotel? Claim it free →
-        </Link>
-      )}
     </div>
   );
 }

@@ -6,8 +6,6 @@ import Footer from "@/components/site/Footer";
 import DeclaredPerks from "@/components/perk/DeclaredPerks";
 import HotelInfoBar from "@/components/hotel/HotelInfoBar";
 import AtAGlance from "@/components/hotel/AtAGlance";
-import ClaimBanner from "@/components/hotel/ClaimBanner";
-import ClaimUnlocks from "@/components/hotel/ClaimUnlocks";
 import { BadgeCheck, Sparkles } from "lucide-react";
 import { getHotelBySlug, getHotelPageData } from "@/lib/data";
 import { CATS } from "@/lib/constants";
@@ -126,18 +124,11 @@ export default async function HotelPage({
                 {countrySuffix}
               </p>
             </div>
-            {isClaimed ? (
+            {isClaimed && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-delivered/40 bg-delivered/10 px-3.5 py-1.5 text-sm font-medium text-delivered">
                 <BadgeCheck className="h-4 w-4" aria-hidden />
                 Verified by the hotel
               </span>
-            ) : (
-              <Link
-                href="/for-hotels"
-                className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-accent"
-              >
-                Are you the hotel? Claim this page
-              </Link>
             )}
           </div>
 
@@ -146,19 +137,13 @@ export default async function HotelPage({
           {/* Body: content + sticky sidebar */}
           <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="min-w-0">
-              {!isClaimed && (
-                <ClaimBanner hotelName={hotel.name} reportCount={reportCount} />
-              )}
-
               {/* Declared by the hotel (grouped by tier) */}
               {declaredOffered.length > 0 && (
                 <DeclaredPerks perks={declaredOffered} slug={hotel.slug} />
               )}
 
               {/* Community reports */}
-              <section
-                className={declaredOffered.length > 0 || !isClaimed ? "mt-12" : ""}
-              >
+              <section className={declaredOffered.length > 0 ? "mt-12" : ""}>
                 <div className="flex items-baseline justify-between border-b border-line pb-3">
                   <h2 className="font-display text-2xl font-semibold tracking-tight">
                     What guests report
@@ -172,8 +157,7 @@ export default async function HotelPage({
                   <div className="mt-8 rounded-xl border border-dashed border-line p-12 text-center">
                     <p className="font-medium">No guest reports yet.</p>
                     <p className="mt-1 text-sm text-ink-soft">
-                      Be the first to share the elite perks you received here — or claim the
-                      hotel to declare them officially.
+                      Be the first to share the elite perks you received here.
                     </p>
                   </div>
                 ) : (
@@ -225,8 +209,6 @@ export default async function HotelPage({
                 )}
               </section>
 
-              {/* Conversion closer (unclaimed only) */}
-              {!isClaimed && <ClaimUnlocks hotelName={hotel.name} />}
             </div>
 
             {/* Sticky sidebar */}
