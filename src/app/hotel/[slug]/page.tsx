@@ -5,6 +5,7 @@ import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
 import DeclaredPerks from "@/components/perk/DeclaredPerks";
 import HotelInfoBar from "@/components/hotel/HotelInfoBar";
+import ManageBanner from "@/components/hotel/ManageBanner";
 import AtAGlance from "@/components/hotel/AtAGlance";
 import { BadgeCheck, Sparkles } from "lucide-react";
 import { getHotelBySlug, getHotelPageData } from "@/lib/data";
@@ -140,6 +141,8 @@ export default async function HotelPage({
           </div>
 
           <HotelInfoBar hotel={hotel} />
+
+          <ManageBanner hotelId={hotel.id} />
 
           {/* Body: content + sticky sidebar */}
           <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
