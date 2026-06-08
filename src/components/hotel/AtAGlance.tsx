@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BadgeCheck } from "lucide-react";
 import type { Hotel } from "@/lib/types";
 import type { DeliveryScore } from "@/lib/data";
 
@@ -37,7 +38,8 @@ export default function AtAGlance({
       <div className="mt-4">
         {isClaimed ? (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-delivered/40 bg-delivered/10 px-3 py-1 text-xs font-medium text-delivered">
-            ✓ Verified by the hotel
+            <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
+            Verified by the hotel
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-3 py-1 text-xs font-medium text-ink-soft">

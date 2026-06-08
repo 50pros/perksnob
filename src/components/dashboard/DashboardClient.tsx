@@ -175,7 +175,7 @@ export default function DashboardClient({
                   />
                 </button>
                 <span className="flex w-44 items-center gap-2">
-                  <span aria-hidden>{c.icon}</span>
+                  <c.Icon className="h-4 w-4 shrink-0 text-ink-soft" aria-hidden />
                   <span className="font-medium">{c.label}</span>
                 </span>
                 {on && (

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { CATS } from "@/lib/constants";
+import { Sparkles } from "lucide-react";
 
 interface DPerk {
   id: string;
@@ -16,7 +17,7 @@ interface DPerk {
   deliveryRate: number | null;
 }
 
-const catMeta = (k: string) => CATS.find((c) => c.key === k) ?? { icon: "•", label: k };
+const catMeta = (k: string) => CATS.find((c) => c.key === k) ?? { Icon: Sparkles, label: k };
 
 function tone(r: number | null): string {
   if (r === null) return "text-ink-soft";
@@ -110,9 +111,10 @@ export default function DeclaredPerks({
         className="flex flex-wrap items-start justify-between gap-4 border-b border-line py-4"
       >
         <div className="flex items-start gap-3.5">
-          <span className="mt-0.5 text-xl leading-none" aria-hidden>
-            {meta.icon}
-          </span>
+          <meta.Icon
+            className="mt-0.5 h-5 w-5 shrink-0 text-ink-soft"
+            aria-hidden
+          />
           <div>
             <p className="font-medium">{meta.label}</p>
             {p.notes && <p className="text-sm text-ink-soft">{p.notes}</p>}

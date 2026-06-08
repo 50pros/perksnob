@@ -1,3 +1,5 @@
+import type { LucideIcon } from "lucide-react";
+
 /* Domain primitives -------------------------------------------------------- */
 export type EliteTier =
   | "ambassador"
@@ -141,7 +143,7 @@ export interface TierDef {
 }
 export interface CategoryDef {
   key: PerkCategory;
-  icon: string;
+  Icon: LucideIcon;
   label: string;
 }
 export interface CategoryFieldDef {

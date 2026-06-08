@@ -8,6 +8,7 @@ import HotelInfoBar from "@/components/hotel/HotelInfoBar";
 import AtAGlance from "@/components/hotel/AtAGlance";
 import ClaimBanner from "@/components/hotel/ClaimBanner";
 import ClaimUnlocks from "@/components/hotel/ClaimUnlocks";
+import { BadgeCheck, Sparkles } from "lucide-react";
 import { getHotelBySlug, getHotelPageData } from "@/lib/data";
 import { CATS } from "@/lib/constants";
 import type { EliteTier, PerkCategory } from "@/lib/types";
@@ -23,7 +24,7 @@ const slugify = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
 const catMeta = (k: PerkCategory) =>
-  CATS.find((c) => c.key === k) ?? { icon: "•", label: k };
+  CATS.find((c) => c.key === k) ?? { Icon: Sparkles, label: k };
 
 const tierLabel = (t: EliteTier) => t.charAt(0).toUpperCase() + t.slice(1);
 
@@ -126,8 +127,9 @@ export default async function HotelPage({
               </p>
             </div>
             {isClaimed ? (
-              <span className="rounded-full border border-delivered/40 bg-delivered/10 px-3.5 py-1.5 text-sm font-medium text-delivered">
-                ✓ Verified by the hotel
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-delivered/40 bg-delivered/10 px-3.5 py-1.5 text-sm font-medium text-delivered">
+                <BadgeCheck className="h-4 w-4" aria-hidden />
+                Verified by the hotel
               </span>
             ) : (
               <Link
@@ -184,9 +186,10 @@ export default async function HotelPage({
                           className="flex items-start justify-between gap-6 border-b border-line py-5"
                         >
                           <div className="flex items-start gap-3.5">
-                            <span className="mt-0.5 text-xl leading-none" aria-hidden>
-                              {meta.icon}
-                            </span>
+                            <meta.Icon
+                              className="mt-0.5 h-5 w-5 shrink-0 text-ink-soft"
+                              aria-hidden
+                            />
                             <div>
                               <p className="font-medium">{meta.label}</p>
                               <p className="text-sm text-ink-soft">
