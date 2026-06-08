@@ -38,25 +38,25 @@ const esc = (s) => String(s || "").replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">":
 
 function buildEmail(h) {
   const name = esc(h.name);
-  const url = `${BASE}/hotel/${h.slug}`;
+  const url = `${BASE}/claim/${h.inviteToken}`;
   const r = h.report_count || 0;
   const lead =
     r > 0
-      ? `Marriott Bonvoy elites are already sharing what they receive at ${name} — ${r} guest report${r === 1 ? "" : "s"} so far.`
-      : `Marriott Bonvoy elites are starting to look up what ${name} offers its top-tier guests.`;
-  const subject = `What elite guests say about ${h.name} on PerkSnob`;
+      ? `Your property already has a profile on PerkSnob, with ${r} guest report${r === 1 ? "" : "s"} from Marriott Bonvoy elites.`
+      : `Your property already has a profile on PerkSnob, the free directory Marriott Bonvoy elites use to compare elite benefits.`;
+  const subject = `Claim your free PerkSnob profile for ${h.name}`;
   const html = `<div style="font-family:Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#17150f;line-height:1.55">
-  <p style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#14533b;font-weight:700;margin:0">PerkSnob · for hotels</p>
+  <p style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#14533b;font-weight:700;margin:0">PerkSnob · invitation</p>
   <h1 style="font-family:Georgia,serif;font-size:24px;margin:10px 0 16px">${name}</h1>
   <p>${lead}</p>
-  <p>PerkSnob is a <strong>free, volunteer-led directory</strong> of Marriott Bonvoy elite benefits, built by the r/marriott community. It's where Titanium, Platinum and Ambassador Elites check what a property actually delivers before they book.</p>
-  <p>Claim your free profile to declare the perks you offer each tier — breakfast, lounge, upgrades, late checkout and more — and stand out to Marriott's most loyal, highest-spend travelers.</p>
-  <p style="margin:26px 0"><a href="${url}" style="background:#17150f;color:#fbfaf7;padding:12px 22px;border-radius:999px;text-decoration:none;font-weight:700">View &amp; claim ${name} →</a></p>
-  <p style="font-size:13px;color:#6b655b">It's free, takes about two minutes, and you verify with a one-time link sent to this address.</p>
+  <p>PerkSnob is a <strong>free, volunteer-led directory</strong> of Marriott Bonvoy elite benefits, built by the r/marriott community. We've set up a profile for your property — and you're invited to claim it.</p>
+  <p>Claiming is free and takes about two minutes. Declare the perks you offer each elite tier, earn the verified badge, and show Marriott's most loyal, highest-spend travelers what makes you worth booking.</p>
+  <p style="margin:26px 0"><a href="${url}" style="background:#17150f;color:#fbfaf7;padding:12px 22px;border-radius:999px;text-decoration:none;font-weight:700">Accept your invitation →</a></p>
+  <p style="font-size:13px;color:#6b655b">This is a private invitation link for ${name}. It's free, with no catch.</p>
   <hr style="border:none;border-top:1px solid #e7e2d7;margin:26px 0">
   <p style="font-size:11px;color:#9b958a">PerkSnob is a free community project, not affiliated with or endorsed by Marriott International.<br>${esc(ADDRESS)}<br>Prefer not to hear from us? <a href="${esc(UNSUB)}" style="color:#9b958a">Unsubscribe</a>.</p>
 </div>`;
-  const text = `${h.name}\n\n${lead}\n\nPerkSnob is a free, volunteer-led directory of Marriott Bonvoy elite benefits from the r/marriott community. Claim your free profile to declare the perks you offer each tier and stand out to Marriott's most loyal travelers.\n\nView & claim: ${url}\n\nFree, ~2 minutes, verified by a one-time link to this address.\n\nPerkSnob is not affiliated with Marriott International.\n${ADDRESS}\nUnsubscribe: ${UNSUB}`;
+  const text = `${h.name}\n\n${lead}\n\nPerkSnob is a free, volunteer-led directory of Marriott Bonvoy elite benefits from the r/marriott community. We've set up a profile for your property and you're invited to claim it.\n\nAccept your invitation: ${url}\n\nClaiming is free and takes about two minutes. This is a private invitation link for your property.\n\nPerkSnob is not affiliated with Marriott International.\n${ADDRESS}\nUnsubscribe: ${UNSUB}`;
   return { subject, html, text };
 }
 
@@ -87,7 +87,31 @@ async function getBatch(limit) {
   const { data: hotels } = await sb
     .from("hotel_home").select("id,slug,name,location,report_count")
     .in("id", pending.map((c) => c.hotel_id));
-  const rows = (hotels || []).map((h) => ({ ...h, email: emailBy.get(h.id) }));
+  let rows = (hotels || []).map((h) => ({ ...h, email: emailBy.get(h.id) }));
+
+  // Ensure a stable per-hotel invite token (create if missing); the tokenized
+  // /claim/<token> URL is the email's CTA. Skip hotels already accepted.
+  const ids = rows.map((r) => r.id);
+  const { data: invites } = await sb
+    .from("hotel_invites").select("hotel_id, token, accepted_at").in("hotel_id", ids);
+  const invBy = new Map((invites || []).map((i) => [i.hotel_id, i]));
+  const missing = rows.filter((r) => !invBy.has(r.id));
+  if (missing.length && SEND) {
+    const { data: created } = await sb
+      .from("hotel_invites")
+      .insert(missing.map((r) => ({ hotel_id: r.id, email: emailBy.get(r.id) })))
+      .select("hotel_id, token, accepted_at");
+    for (const i of created || []) invBy.set(i.hotel_id, i);
+  }
+  // Dry run stays write-free: existing tokens are shown; not-yet-created ones
+  // show a placeholder (the real token is minted when you actually --send).
+  rows = rows
+    .filter((r) => !invBy.get(r.id)?.accepted_at)
+    .map((r) => ({
+      ...r,
+      inviteToken: invBy.get(r.id)?.token || "TOKEN-CREATED-ON-SEND",
+    }));
+
   return { rows, totalAddressable: contacts.length, alreadySent: sent.size };
 }
 
