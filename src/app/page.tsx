@@ -3,9 +3,12 @@ import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
 import HotelSearch from "@/components/hotel/HotelSearch";
 import HotelScrollRow from "@/components/hotel/HotelScrollRow";
-import { getHomeRows } from "@/lib/data";
+import { getHomeRows, getHomeStats } from "@/lib/data";
+import { CATS } from "@/lib/constants";
 
 export const revalidate = 3600;
+
+const fmt = (n: number) => n.toLocaleString("en-US");
 
 const toneClass: Record<string, string> = {
   delivered: "text-delivered",
@@ -21,7 +24,7 @@ const SPECIMEN: Array<[string, string, number, keyof typeof toneClass]> = [
 ];
 
 export default async function HomePage() {
-  const rows = await getHomeRows();
+  const [rows, stats] = await Promise.all([getHomeRows(), getHomeStats()]);
 
   return (
     <main className="min-h-screen bg-paper text-ink">
@@ -48,15 +51,15 @@ export default async function HomePage() {
             href="/hotels"
             className="text-sm font-medium text-accent underline-offset-4 hover:underline"
           >
-            Browse all 8,982 properties →
+            Browse all {fmt(stats.hotels)} properties →
           </Link>
         </div>
 
         <dl className="mt-12 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-4">
           {[
-            ["8,982", "Properties"],
-            ["18", "Perk categories"],
-            ["5", "Elite tiers"],
+            [fmt(stats.hotels), "Properties"],
+            [String(CATS.length), "Perk categories"],
+            [fmt(stats.reports), "Guest reports"],
             ["Free", "Community-led"],
           ].map(([n, l]) => (
             <div key={l} className="bg-paper px-5 py-6">

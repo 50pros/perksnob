@@ -233,6 +233,17 @@ export async function getRegionDirectory(): Promise<
   return (data ?? []) as { region: string; hotel_count: number }[];
 }
 
+/** Site-wide counts for the homepage stats bar. Uses head + exact count so it
+ *  is NEVER capped by PostgREST's 1000-row response limit (the old site showed
+ *  a stuck "1,000" for this reason). */
+export async function getHomeStats(): Promise<{ hotels: number; reports: number }> {
+  const [h, r] = await Promise.all([
+    sb.from("hotels").select("*", { count: "exact", head: true }),
+    sb.from("perk_reports").select("*", { count: "exact", head: true }),
+  ]);
+  return { hotels: h.count ?? 0, reports: r.count ?? 0 };
+}
+
 export function slugify(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }

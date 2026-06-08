@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
 import DeclaredPerks from "@/components/perk/DeclaredPerks";
+import HotelInfoBar from "@/components/hotel/HotelInfoBar";
 import { getHotelBySlug, getHotelPageData } from "@/lib/data";
 import { CATS } from "@/lib/constants";
 import type { EliteTier, PerkCategory } from "@/lib/types";
@@ -116,7 +117,9 @@ export default async function HotelPage({
               </h1>
               <p className="mt-3 text-ink-soft">
                 {hotel.location}
-                {hotel.region ? ` · ${hotel.region}` : ""}
+                {hotel.country && !hotel.location.includes(hotel.country)
+                  ? ` · ${hotel.country}`
+                  : ""}
               </p>
             </div>
             {isClaimed ? (
@@ -132,6 +135,9 @@ export default async function HotelPage({
               </Link>
             )}
           </div>
+
+          {/* Property facts: address, rooms, phone, book link */}
+          <HotelInfoBar hotel={hotel} />
 
           {/* Unclaimed notice */}
           {!isClaimed && (
