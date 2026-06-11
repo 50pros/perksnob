@@ -26,10 +26,18 @@ export default function HotelSearch() {
     let active = true;
     setLoading(true);
     const t = setTimeout(async () => {
-      const { data } = await sb.current
+      // Match every word in any order, against name OR city, so "Sheraton
+      // Nashville Airport Music City" finds "Sheraton Music City Nashville
+      // Airport". Each token is required (AND); within a token, name OR location.
+      const tokens = term.split(/\s+/).filter(Boolean).slice(0, 6);
+      let query = sb.current
         .from("hotel_directory")
-        .select("slug,name,brand,location")
-        .ilike("name", `%${term}%`)
+        .select("slug,name,brand,location");
+      for (const tok of tokens) {
+        const t = tok.replace(/[%,()]/g, "");
+        if (t) query = query.or(`name.ilike.%${t}%,location.ilike.%${t}%`);
+      }
+      const { data } = await query
         .order("report_count", { ascending: false })
         .limit(8);
       if (active) {

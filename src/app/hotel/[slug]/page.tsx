@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
 import DeclaredPerks from "@/components/perk/DeclaredPerks";
+import GuestReport from "@/components/perk/GuestReport";
 import HotelInfoBar from "@/components/hotel/HotelInfoBar";
 import ManageBanner from "@/components/hotel/ManageBanner";
 import AtAGlance from "@/components/hotel/AtAGlance";
@@ -162,6 +163,8 @@ export default async function HotelPage({
                     {reportCount} report{reportCount === 1 ? "" : "s"}
                   </p>
                 </div>
+
+                <GuestReport hotelId={hotel.id} slug={hotel.slug} />
 
                 {community.length === 0 ? (
                   <div className="mt-8 rounded-xl border border-dashed border-line p-12 text-center">
