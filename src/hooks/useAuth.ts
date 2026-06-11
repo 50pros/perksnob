@@ -34,20 +34,31 @@ export function useAuth(): UseAuthReturn {
 
   useEffect(() => {
     const supabase = createClient();
+    let active = true;
 
-    // Seed with current user
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data?.user ?? null);
+    // Seed from the stored session (reads the auth cookie directly). We
+    // deliberately use getSession() rather than getUser() here: getUser()
+    // makes a network round-trip whose timing races against the
+    // INITIAL_SESSION event below, and a late null can clobber a resolved
+    // user — leaving signed-in visitors rendered as logged out. Trust for
+    // real actions is enforced server-side (middleware + RLS); this is only
+    // UI state.
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      setUser(data.session?.user ?? null);
       setLoading(false);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
       setUser(session?.user ?? null);
+      setLoading(false);
     });
 
     return () => {
+      active = false;
       subscription.unsubscribe();
     };
   }, []);
