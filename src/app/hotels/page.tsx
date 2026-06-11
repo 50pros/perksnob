@@ -4,6 +4,7 @@ import Header from "@/components/site/Header";
 import Footer from "@/components/site/Footer";
 import HotelCard from "@/components/hotel/HotelCard";
 import HotelSearch from "@/components/hotel/HotelSearch";
+import RequestHotel from "@/components/hotel/RequestHotel";
 import {
   getTopHotels,
   getBrandDirectory,
@@ -102,6 +103,11 @@ export default async function HotelsPage() {
             </div>
           </section>
         )}
+
+        {/* Request a missing hotel */}
+        <section className="mt-16 max-w-2xl">
+          <RequestHotel />
+        </section>
       </div>
       <Footer />
     </main>

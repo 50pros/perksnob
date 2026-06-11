@@ -4,13 +4,17 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { CATS, TIERS } from "@/lib/constants";
+import { CATS, TIERS, CATEGORY_FIELDS } from "@/lib/constants";
+import type { PerkCategory } from "@/lib/types";
 
 const fieldCls =
   "mt-1 w-full rounded-lg border border-line bg-paper px-3.5 py-2.5 text-base text-ink outline-none transition-colors placeholder:text-ink-soft focus:border-ink";
 
-/** Lets a signed-in guest post what elite perks they received at this hotel.
- *  Writes to perk_reports (the community layer). */
+type Details = Record<string, string>;
+
+/** Lets a signed-in guest post what elite perks they received, with the
+ *  per-category detail questions from the original platform. Writes to
+ *  perk_reports (description + category_details jsonb). */
 export default function GuestReport({
   hotelId,
   slug,
@@ -21,8 +25,9 @@ export default function GuestReport({
   const { user } = useAuth();
   const [sb] = useState(() => createClient());
   const [open, setOpen] = useState(false);
-  const [category, setCategory] = useState("breakfast");
+  const [category, setCategory] = useState<PerkCategory>("breakfast");
   const [tier, setTier] = useState("titanium");
+  const [details, setDetails] = useState<Details>({});
   const [desc, setDesc] = useState("");
   const [name, setName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -46,6 +51,14 @@ export default function GuestReport({
     };
   }, [user, sb]);
 
+  function changeCategory(c: PerkCategory) {
+    setCategory(c);
+    setDetails({});
+  }
+  function setDetail(key: string, value: string) {
+    setDetails((d) => ({ ...d, [key]: value }));
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!user || busy) return;
@@ -56,6 +69,8 @@ export default function GuestReport({
     }
     setBusy(true);
     setErr(null);
+    const clean: Details = {};
+    for (const [k, v] of Object.entries(details)) if (v) clean[k] = v;
     const { error } = await sb.from("perk_reports").insert({
       hotel_id: hotelId,
       user_id: user.id,
@@ -63,6 +78,7 @@ export default function GuestReport({
       elite_tier: tier,
       category,
       description: text,
+      category_details: Object.keys(clean).length ? clean : null,
     });
     setBusy(false);
     if (error) {
@@ -75,6 +91,7 @@ export default function GuestReport({
     }
     setDone(true);
     setDesc("");
+    setDetails({});
   }
 
   if (!user) {
@@ -121,6 +138,10 @@ export default function GuestReport({
     );
   }
 
+  const catFields = (CATEGORY_FIELDS[category] ?? []).filter(
+    (f) => !f.showIf || f.showIf(details),
+  );
+
   return (
     <form
       onSubmit={submit}
@@ -135,7 +156,7 @@ export default function GuestReport({
           <span className="text-ink-soft">Perk</span>
           <select
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            onChange={(e) => changeCategory(e.target.value as PerkCategory)}
             className={fieldCls}
           >
             {CATS.map((c) => (
@@ -159,14 +180,54 @@ export default function GuestReport({
             ))}
           </select>
         </label>
+        {catFields.map((f) => (
+          <label key={f.key} className="block text-sm">
+            <span className="text-ink-soft">{f.label}</span>
+            {f.type === "select" ? (
+              <select
+                value={details[f.key] ?? ""}
+                onChange={(e) => setDetail(f.key, e.target.value)}
+                className={fieldCls}
+              >
+                <option value="">—</option>
+                {f.options?.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            ) : f.type === "rating" ? (
+              <select
+                value={details[f.key] ?? ""}
+                onChange={(e) => setDetail(f.key, e.target.value)}
+                className={fieldCls}
+              >
+                <option value="">—</option>
+                {Array.from({ length: f.max ?? 5 }, (_, i) => String(i + 1)).map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={details[f.key] ?? ""}
+                onChange={(e) => setDetail(f.key, e.target.value)}
+                placeholder={f.placeholder}
+                className={fieldCls}
+              />
+            )}
+          </label>
+        ))}
       </div>
       <textarea
         value={desc}
         onChange={(e) => setDesc(e.target.value)}
         rows={3}
         maxLength={500}
-        placeholder="What did you receive? e.g. Full breakfast in the main restaurant, suite upgrade offered at check-in, 4 PM late checkout…"
-        className={`${fieldCls} resize-y`}
+        placeholder="Anything else? e.g. Full breakfast in the main restaurant, suite upgrade offered at check-in, 4 PM late checkout…"
+        className={`${fieldCls} mt-3 resize-y`}
       />
       {err && <p className="mt-2 text-sm text-disputed">{err}</p>}
       <div className="mt-4 flex items-center gap-2">
